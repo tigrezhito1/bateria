@@ -1,0 +1,66 @@
+
+<link rel="stylesheet" type="text/css" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/css/bootstrap.min.css">
+
+<link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+
+<link rel="stylesheet"
+href="https://cdn.jsdelivr.net/npm/animate.css@3.5.2/animate.min.css">
+
+
+<style type="text/css">
+
+body{
+    font-family: 'Montserrat', sans-serif !important;
+}
+	
+#header{
+
+    width: auto;
+    height: 55px !important;
+    padding: 10px 40px;
+    background: #f56055 !important;
+    line-height: 40px;
+    color: #fff !important;
+    overflow: hidden;
+}
+#branding h1, #branding h1 a:link, #branding h1 a:visited {
+    color: #fff !important;
+}
+
+caption{
+
+	background: #79aec8 !important;
+}
+
+.breadcrumbs {
+    background: #79aec8 !important;
+    padding: 10px 40px;
+    border: none;
+    font-size: 14px;
+    color: #c4dce8;
+    text-align: left;
+}
+
+.submit-row a.deletelink {
+
+    height: 35px !important;
+
+}
+
+</style>
+{% extends "admin/base.html" %}
+
+{% block title %}
+
+{{ title }}
+
+
+{% endblock %}
+
+{% block branding %}
+
+
+<h1 id="site-name" class='animated  flipInX' ><a href="{% url 'admin:index' %}" class='animated infinite bounce'>{{ site_header|default:_('Django administration') }}</a></h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

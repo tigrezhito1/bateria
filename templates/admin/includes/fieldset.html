@@ -1,0 +1,70 @@
+<fieldset class="module aligned {{ fieldset.classes }}">
+    {% if fieldset.name %}<h2>{{ fieldset.name }}</h2>{% endif %}
+    {% if fieldset.description %}
+        <div class="description">{{ fieldset.description|safe }}</div>
+    {% endif %}
+
+    <div class="row">
+        
+     
+        
+
+            {% for line in fieldset %}
+
+                <div class='col-md-4'>
+             
+                
+                <div style="border-bottom:0" class="form-row{% if line.errors %} errors{% endif %}{% for field in line %} {{ field.field.name }}{% endfor %}">
+                    {{ line.errors }}
+                    {% for field in line %}
+                        <div{% if not line.fields|length_is:"1" %} class="field-box"{% endif %}>
+                            {% if field.is_checkbox %}
+                                {{ field.field }}{{ field.label_tag }}
+                            {% else %}
+                                {{ field.label_tag }}
+                                {% if field.is_readonly %}
+                                    <p>{{ field.contents }}</p>
+                                {% else %}
+                                    {{ field.field }}
+                                {% endif %}
+                            {% endif %}
+                            {% if field.field.field.help_text %}
+                                <p class="help">{{ field.field.field.help_text|safe }}</p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+              
+
+
+                 </div>
+            {% endfor %}
+            
+
+
+
+       
+       
+
+    </div>
+
+    
+</fieldset>
+
+
+<style type="text/css">
+    
+
+
+label {
+    display: inline-block !important;
+    margin-bottom: 0em !important;
+}
+.form-row {
+    overflow: hidden;
+    padding: 2px !important;
+    font-size: 12px !important;
+    border-bottom: 1px solid #eee;
+}
+}
+</style>

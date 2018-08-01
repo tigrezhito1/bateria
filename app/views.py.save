@@ -1,0 +1,2607 @@
+#    ___       ___       ___       ___            ___       ___   
+#   /\  \     /\__\     /\  \     /\__\          /\  \     /\  \  
+#  /  \  \   / | _|_   /  \  \   |  L__L        _\ \  \   /  \  \ 
+# /  \ \__\ /  |/\__\ / /\ \__\  |   \__\      /\/  \__\ / /\ \__\
+# \/\  /  / \/|  /  / \ \/ /  /  /   /__/      \  /\/__/ \ \/ /  /
+#   / /  /    | /  /   \  /  /   \/__/          \/__/     \  /  / 
+#   \/__/     \/__/     \/__/                              \/__/
+
+# email : joelunmsm@gmail.com
+# web   : xiencias.com
+
+
+
+from django.shortcuts import *
+from django.template import RequestContext
+from django.contrib.auth import *
+from django.views.generic import View
+from django.contrib.auth.models import Group, User
+from django.core import serializers
+from django.shortcuts import render
+from django.views.generic import View
+from django.http import HttpResponse,JsonResponse
+from django.contrib.auth.models import Group, User
+from jwt_auth.compat import json
+from jwt_auth.mixins import JSONWebTokenAuthMixin
+from django.template import RequestContext
+import simplejson
+from django.views.decorators.csrf import csrf_exempt
+import xlrd
+from django.db.models import Count,Sum
+from app.models import *
+from app.serializers import *
+from django.db.models import Count,Sum
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.renderers import JSONRenderer
+
+from django.contrib.auth import authenticate
+import time
+from django.db.models import Func
+import os
+from datetime import datetime,timedelta,date
+import os.path
+import requests
+import smtplib
+from email.mime.text import MIMEText
+from django.db.models import Count,Max
+import datetime
+import random
+from django.db.models import Count,Sum
+from PIL import Image
+from resizeimage import resizeimage
+import csv
+import pandas
+
+class Uploadphoto(JSONWebTokenAuthMixin, View):
+
+    #Retorna datos del agente
+    def post(self, request):
+
+        caption = request.FILES['file']
+
+        #Guarda foto
+
+        print caption
+
+        id_user =request.user.id
+
+        print id_user
+
+        a = Agente.objects.get(user_id=id_user)
+
+        a.photo = caption
+
+        a.save()
+
+
+        caption = '/home/capital/'+str(Agente.objects.get(user_id=id_user).photo)
+
+        fd_img = open(caption, 'r')
+
+        img = Image.open(fd_img)
+
+        width, height = img.size
+
+        img = resizeimage.resize_cover(img, [300, 300])
+
+        img.save(caption, img.format)
+
+        fd_img.close()
+
+        a= simplejson.dumps('OK')
+        
+        return HttpResponse(a, content_type="application/json")
+
+
+
+
+def mobile(request):
+    """Return True if the request comes from a mobile device."""
+    MOBILE_AGENT_RE=re.compile(r".*(iphone|mobile|androidtouch)",re.IGNORECASE)
+    if MOBILE_AGENT_RE.match(request.META['HTTP_USER_AGENT']):
+        return True
+    else:
+        return False
+
+def ValuesQuerySetToDict(vqs):
+
+    return [item for item in vqs]
+
+def traesemana(fecha_inicio):
+
+    id =1
+
+    if Semanas.objects.filter(fecha_inicio__lte=fecha_inicio,fecha_fin__gte=fecha_inicio).count()>0:
+
+        id = Semanas.objects.get(fecha_inicio__lte=fecha_inicio,fecha_fin__gte=fecha_inicio).id
+
+    else:
+
+        id=58
+
+    return id
+
+
+
+
+
+
+
+    
+    #Actualiza datos
+    def put(self, request):
+
+        id =request.user.id
+        data = json.loads(request.body)
+        telefono = None
+
+        a = Agente.objects.get(user_id=id)
+
+        for i in data:
+
+
+            data['meta_requerida']=float(str(data['meta_requerida']).replace(',',''))
+            data['meta_personal']=float(str(data['meta_personal']).replace(',',''))
+
+
+
+            if i=='tipo_agente' :tipo_agente=data['tipo_agente']
+            if i=='meta_personal' :a.meta_personal=data['meta_personal']
+            if i=='meta_requerida' :a.meta_requerida=data['meta_requerida']
+            if i=='correo_capital' :a.correo_capital=data['correo_capital']
+            if i=='user__email' :email=data['user__email']
+            if i=='photo' :a.photo=data['photo']
+            if i=='user__direccion' :a.direccion=data['user__direccion']
+            if i=='user__dni' :a.dni=data['user__dni']
+            if i=='telefono':a.telefono=data['telefono']
+            if i=='telefono_1':a.telefono_1=data['telefono_1']
+            if i=='password':
+                u = User.objects.get(id=id)
+                u.set_password(data['password'])
+                u.save()
+
+
+
+            if i=='telefono':
+                TelefonoUser(user_id=a.user.id,numero=data['telefono']).save()
+
+    
+        a.save()
+
+
+
+        a= simplejson.dumps('OK')
+        return HttpResponse(a, content_type="application/json")
+
+    #Retorna datos del agente
+    def get(self, request):
+
+        print 'entree...'
+
+        
+        id =request.user.id
+        a = Agente.objects.filter(user_id=id).values('user','photo','id','estructura__nombre','user__email','tipo_agente__nombre','meta_personal','meta_requerida','correo_capital','photo','user__first_name','user__last_name','user__dni','user__direccion','equipo__nombre','user__username','pais__nombre','telefono_1','nivel__nombre','telefono')
+        fmt = '%d %b %Y'
+        for j in range(len(a)):
+
+            if Agente.objects.get(id=a[j]['id']).fecha_ingreso:
+                a[j]['fecha_ingreso'] = Agente.objects.get(id=a[j]['id']).fecha_ingreso.strftime(fmt)
+            if Agente.objects.get(id=a[j]['id']).user.nacimiento:
+                a[j]['fecha_nacimiento'] = Agente.objects.get(id=a[j]['id']).user.nacimiento
+
+            # a[j]['meta_requerida']="{:,}".format(a[j]['meta_requerida'])
+            # a[j]['meta_personal']="{:,}".format(a[j]['meta_personal'])
+
+
+        a= simplejson.dumps(ValuesQuerySetToDict(a))
+        return HttpResponse(a, content_type="application/json")
+
+
+class Listacliente(JSONWebTokenAuthMixin, View):
+
+    # Retorna datos del agente
+    def get(self,request,cliente):
+
+        #id_user_cliente = Cliente.objects.get(id=cliente).user.id
+
+        a =Cliente.objects.filter(id=cliente).values('id','estado_civil','numero_hijos','dni','conyuge','nombre','apellido','direccion','email','telefono','edad_conyuge')
+        
+        fmt = '%d/%m/%Y'
+        
+        for j in range(len(a)):
+
+            if Cliente.objects.get(id=a[j]['id']).fecha_inicio: 
+                a[j]['fecha_inicio'] = Cliente.objects.get(id=a[j]['id']).fecha_inicio.strftime(fmt)
+            if Cliente.objects.get(id=a[j]['id']).fecha_nacimiento:
+                a[j]['fecha_nacimiento'] = Cliente.objects.get(id=a[j]['id']).fecha_nacimiento.strftime(fmt)
+            
+            if Cliente.objects.get(id=a[j]['id']).fecha_nacimiento_conyuge:
+                a[j]['fecha_nacimiento_conyuge'] = Cliente.objects.get(id=a[j]['id']).fecha_nacimiento_conyuge.strftime(fmt)
+            
+
+            # if TelefonoUser.objects.filter(user_id=id_user_cliente).count()>0:
+            #   a[j]['telefono'] = TelefonoUser.objects.filter(user_id=id_user_cliente).order_by('-id').values('numero')[0]
+
+            p=ParientesCliente.objects.filter(cliente_id=cliente,relacion_id=2).values('id','nombre','edad','relacion__nombre')
+
+            fmt = '%d/%m/%Y'
+
+            for pa in range(len(p)):
+
+                if ParientesCliente.objects.get(id=p[pa]['id']).fecha_nacimiento:
+
+                    p[pa]['fecha_nacimiento']=ParientesCliente.objects.get(id=p[pa]['id']).fecha_nacimiento.strftime(fmt)
+
+            a[j]['parientes']=ValuesQuerySetToDict(p)
+
+            a[j]['numero_hijos']=p.count()
+
+        a= simplejson.dumps(ValuesQuerySetToDict(a))
+
+        return HttpResponse(a, content_type="application/json")
+
+class Citasagente(JSONWebTokenAuthMixin, View):
+
+    ## Agrega telefonos
+    def get(self, request):
+
+        id =request.user.id
+
+        agente = Agente.objects.get(user_id=id).id
+
+        c =Citas.objects.filter(agente_id=agente).values('id','tipo_seguimiento__nombre','cliente__nombre','cliente__apellido','propuesta_cliente__ramo_compania_producto__ramo__nombre','propuesta_cliente__ramo_compania_producto__compania__nombre','propuesta_cliente__ramo_compania_producto__producto__nombre').order_by('-fecha_cita')
+
+        #'cliente__user__first_name','agente__user__first_name','tipo_cita__nombre','',,,'tipo_seguimiento__nombre','observacion','prima_target','modalidad__nombre','prima_anual')
+        
+        fmt = '%Y-%m-%d'
+
+        #'observacion','id','prima_target','modalidad__nombre','prima_anual','inforce','tipo_cita__nombre','tipo_seguimiento__nombre',
+
+        for j in range(len(c)):
+
+            if Citas.objects.get(id=c[j]['id']).fecha_cita:
+
+                c[j]['fecha_cita'] = Citas.objects.get(id=c[j]['id']).fecha_cita.strftime(fmt)
+
+            if Citas.objects.get(id=c[j]['id']).fecha_solicitud:
+
+                c[j]['fecha_solicitud'] = Citas.objects.get(id=c[j]['id']).fecha_solicitud.strftime(fmt)
+
+            if Citas.objects.get(id=c[j]['id']).fecha_poliza:
+
+                c[j]['fecha_poliza'] = Citas.objects.get(id=c[j]['id']).fecha_poliza.strftime(fmt)
+
+            if Citas.objects.get(id=c[j]['id']).observacion:
+
+                c[j]['observacion'] = Citas.objects.get(id=c[j]['id']).observacion
+
+            if Citas.objects.get(id=c[j]['id']).prima_target:
+
+                c[j]['prima_target'] = Citas.objects.get(id=c[j]['id']).prima_target
+
+            if Citas.objects.filter(id=c[j]['id']).values('modalidad__nombre'):
+
+                c[j]['modalidad__nombre'] = Citas.objects.filter(id=c[j]['id']).values('modalidad__nombre')[0]['modalidad__nombre']
+
+            if Citas.objects.get(id=c[j]['id']).prima_anual:
+
+                c[j]['prima_anual'] = Citas.objects.get(id=c[j]['id']).prima_anual
+
+            if Citas.objects.get(id=c[j]['id']).inforce:
+
+                c[j]['inforce'] = Citas.objects.get(id=c[j]['id']).inforce
+
+            if Citas.objects.get(id=c[j]['id']).tipo_cita:
+
+                c[j]['tipo_cita__nombre'] = Citas.objects.get(id=c[j]['id']).tipo_cita.nombre
+
+
+
+        c= simplejson.dumps(ValuesQuerySetToDict(c))
+
+        return HttpResponse(c, content_type="application/json")
+
+class Termometro(JSONWebTokenAuthMixin, View):
+
+    ## Agrega telefonos
+    def get(self, request):
+
+        id =request.user.id
+
+        agente = Agente.objects.get(user_id=id).id
+
+  
+        con = 0
+
+        #ncitasreal = Citas.objects.filter(agente_id=agente,tipo_cita__nombre='Nuevo Prospecto de Cliente').annotate(total=Count('cliente')).count()
+
+        cli = Cliente.objects.filter(agente_id=agente)
+
+        for i in cli:
+
+            print i.id
+
+            if Citas.objects.filter(cliente_id=i.id,tipo_cita__nombre='Nuevo Prospecto de Cliente').count()>0:
+
+                con = con+1
+
+
+        ncitasreal = con
+
+        #ncitasreal = Citas.objects.filter(agente_id=agente,tipo_seguimiento__nombre='Nuevo').count()
+
+        #totalcitasesperado = (4*4+5)*5  #total de citas al anio # 260
+
+        totalcitasesperado = 260
+
+        citaesperadoafecha = (3*5)
+
+        porcentajeesperado = citaesperadoafecha*100/totalcitasesperado
+
+        porcentareal = float(ncitasreal*100)/float(totalcitasesperado)
+
+
+        print 'ncitasreales..',porcentareal
+
+
+        if porcentajeesperado>porcentareal:
+            estado='alerta'
+        else:
+            estado='exito'
+
+        if porcentajeesperado==porcentareal:
+            estado='umbral'
+
+        data={'estado':estado,'porcentaje':porcentareal,'porcentajeesperado':porcentajeesperado,'totalcitasesperado':totalcitasesperado}
+
+        c= simplejson.dumps(data)
+        return HttpResponse(c, content_type="application/json")
+
+
+class Updatecita(JSONWebTokenAuthMixin, View):
+
+    ## Agrega telefonos
+    def post(self, request):
+
+        data = json.loads(request.body)
+
+        print data['id']
+
+        c = Citas.objects.get(id=data['id'])
+
+        for d in data:
+
+            if d =='fecha_cita': c.fecha_cita = data['fecha_cita']
+            if d =='observacion': c.observacion = data['observacion']
+            if d =='prima_target': c.prima_target = data['prima_target']
+            if d =='prima_anual': c.prima_anual = data['prima_anual']
+            if d =='fecha_solicitud': c.fecha_solicitud = data['fecha_solicitud']
+            if d =='fecha_poliza': c.fecha_poliza = data['fecha_poliza']
+
+        c.save()
+
+
+
+        return HttpResponse(simplejson.dumps('OK'), content_type="application/json")
+
+class Buscaarchivos(JSONWebTokenAuthMixin, View):
+
+    ## Agrega telefonos
+    def post(self, request):
+
+        data = json.loads(request.body)
+
+        my_filter={}
+
+        
+
+        #{u'pais': u'Ecuador', u'cia': 2, u'ramo': {u'nombre': u'Vida', u'id': 1}, u'tipo_documento': u'Formularios'}
+
+        for d in data:
+
+            if d=='pais': pais =data['pais']; my_filter['pais__nombre'] = pais
+            if d=='cia' : cia = data['cia']; my_filter['compania_id'] = cia
+            if d=='ramo' : ramo = data['ramo']['id']; my_filter['ramo'] = ramo
+            if d=='tipo_documento': tipo_documento = data['tipo_documento']; my_filter['tipo_archivo'] = tipo_documento
+
+
+        _archivos = Archivo.objects.filter(**my_filter).values('nombre','ruta')
+
+        a= simplejson.dumps(ValuesQuerySetToDict(_archivos))
+
+        return HttpResponse(a, content_type="application/json")
+
+
+
+class Updatepropuesta(JSONWebTokenAuthMixin, View):
+
+    ## Agrega telefonos
+    def post(self, request):
+
+        data = json.loads(request.body)
+
+        print data
+
+        pro =PropuestaCliente.objects.get(id=data['id'])
+
+        for p in data:
+
+            if p =='fecha': pro.fecha = data['fecha']
+            if p =='observacion': pro.observacion = data['observacion']
+
+        pro.save()
+
+
+
+
+        # c = Citas.objects.get(id=data['id'])
+
+        # for d in data:
+
+        #     if d =='fecha_cita': c.fecha_cita = data['fecha_cita']
+        #     if d =='observacion': c.observacion = data['observacion']
+        #     if d =='prima_target': c.prima_target = data['prima_target']
+        #     if d =='prima_anual': c.prima_anual = data['prima_anual']
+        #     if d =='fecha_solicitud': c.fecha_solicitud = data['fecha_solicitud']
+        #     if d =='fecha_poliza': c.fecha_poliza = data['fecha_poliza']
+
+        # c.save()
+
+
+        return HttpResponse(simplejson.dumps('OK'), content_type="application/json")
+
+
+
+class Eliminarpropuesta(JSONWebTokenAuthMixin, View):
+
+    
+    ## Agrega telefonos
+    def get(self, request,id):
+
+        Citas.objects.filter(propuesta_cliente_id=id).delete()
+
+        PropuestaCliente.objects.get(id=id).delete()
+
+        return HttpResponse(simplejson.dumps('OK'), content_type="application/json")
+
+class Version(JSONWebTokenAuthMixin, View):
+
+    
+    ## Agrega telefonos
+    def get(self, request,version):
+
+        id_agente=request.user.id
+
+        print 'version',version
+
+        print 'Ingreso..',User.objects.get(id=id_agente).username
+
+        ag = Agente.objects.get(user_id=id_agente)
+        ag.version = version
+        ag.save()
+
+
+
+        return HttpResponse(simplejson.dumps('OK'), content_type="application/json")
+
+class Asignamovil(JSONWebTokenAuthMixin, View):
+
+    
+    ## Agrega telefonos
+    def get(self, request,movil):
+
+        id=request.user.id
+        a = Agente.objects.get(user_id=id)
+
+        if movil ==0:
+
+            
+            a.tipo_movil = 'android'
+
+        else:
+
+            a.tipo_movil='ios'
+
+        a.save()
+
+
+
+        return HttpResponse(simplejson.dumps('OK'), content_type="application/json")
+
+class Verificaversion(JSONWebTokenAuthMixin, View):
+
+    
+    ## Agrega telefonos
+    def get(self, request):
+
+        id_user=request.user.id
+
+        a = Agente.objects.get(user_id=id_user)
+        version = a.version
+
+        if int(version) ==47:
+            data  ='Actualizado'
+        else:
+            data ='Sin actualizar'
+        
+        return HttpResponse(simplejson.dumps(data), content_type="application/json")
+
+
+# class Enviasms(JSONWebTokenAuthMixin, View):
+
+    
+#     ## Agrega telefonos
+#     def get(self, request):
+
+#         id_user=request.user.id
+
+        
+
+#         audience = {numero:mensaje}
+
+#         dato = bulksms(audience)
+
+#         return HttpResponse(simplejson.dumps('OK'), content_type="application/json")
+
+
+
+# def bulksms(audience):
+
+#     url ="http://smsbulk.pe/SmsBulk/rest/ws/bulkSms"
+#     username = 'xiencias'
+#     password = '9nG4SB'
+
+
+#     for recipient in audience:
+        
+#         phone_number = recipient
+
+#         message = audience[recipient]
+
+#         if phone_number[:2] != '51':
+
+#             phone_number = '51%s' % phone_number
+
+#         params = {'usr' : username,'pas' : password,'msg' : message ,'num' : phone_number}
+
+#         reply = requests.get(url, params=params)
+
+#         result1 = reply.text
+
+#         return result1
+
+
+
+
+
+
+
+
+
+
+class Creacitaequipo(JSONWebTokenAuthMixin, View):
+
+    #{u'interes': u'Seguimiento', u'fecha_inicio': u'2018-01-18T05:00:00.000Z', u'apellido': u'232', u'nombre': u'32', u'user__first_name': {u'user__direccion': None, u'correo_capital': u'mhervas@capitalprts.com', u'user__username': u'mhervas', u'photo': u'static/Foto_App_I2ngkRM.PNG', u'id': 47, u'estructura__nombre': u'In House', u'user__email': u'mhervas@capitalprts.com', u'user__first_name': u'Mar\xeda Teresa', u'equipo__nombre': u'VERDE', u'telefono_1': u'', u'tipo_agente__nombre': u'Relationship Manager', u'user': 214, u'user__dni': None, u'meta_personal': 100000, u'nivel__nombre': u'GERENTE', u'meta_requerida': 125000, u'pais__nombre': u'Ecuador', u'user__last_name': u'Hervas'}}
+    ## Agrega telefonos
+    def post(self, request):
+
+        data = json.loads(request.body)
+
+        id =request.user.id
+
+        id_agente = Agente.objects.get(user_id=id).id
+
+        fecha_inicio = data['fecha_inicio']
+
+        agente = data['agente']['id']
+        tipo_seguimiento = data['tipo_seguimiento']
+        cliente=data['cliente']['id']
+        propuesta = data['propuesta']['id']
+        observacion=data['observacion']
+
+        print 'tipo_seguimiento',tipo_seguimiento
+
+        sem= traesemana(fecha_inicio)
+
+        Citas(agente_equipo=id_agente,observacion=observacion,semana_id=sem,propuesta_cliente_id=propuesta,tipo_cita_id=4,cliente_id=cliente,fecha_cita=fecha_inicio,agente_id=agente,tipo_seguimiento_id=tipo_seguimiento).save()
+
+        return HttpResponse(simplejson.dumps('OK'), content_type="application/json")
+
+
+
+class Agenterest(JSONWebTokenAuthMixin, View):
+
+    
+    #Actualiza datos
+    def put(self, request):
+
+        id =request.user.id
+        data = json.loads(request.body)
+        telefono = None
+
+        a = Agente.objects.get(user_id=id)
+
+        for i in data:
+            
+            if i=='tipo_agente' :tipo_agente=data['tipo_agente']
+            if i=='meta_personal' :a.meta_personal=data['meta_personal']
+            if i=='meta_requerida' :a.meta_requerida=data['meta_requerida']
+            if i=='correo_capital' :a.correo_capital=data['correo_capital']
+            if i=='user__email' :email=data['user__email']
+            if i=='photo' :a.photo=data['photo']
+            if i=='user__direccion' :direccion=data['user__direccion']
+            if i=='user__dni' :dni=data['user__dni']
+            if i=='telefono':telefono=data['telefono']
+            if i=='password':
+                u = User.objects.get(id=id)
+                u.set_password(data['password'])
+                u.save()
+
+
+
+            if i=='telefono':
+                TelefonoUser(user_id=a.user.id,numero=data['telefono']).save()
+
+    
+        a.save()
+
+        au = AuthUser.objects.get(id=id)
+        au.email = email
+        au.direccion = direccion
+        au.dni= dni
+        au.telefono=telefono
+        au.save()
+
+        a= simplejson.dumps('OK')
+        return HttpResponse(a, content_type="application/json")
+
+    #Retorna datos del agente
+    def get(self, request):
+
+        
+        id =request.user.id
+
+        if Agente.objects.get(user_id=request.user.id).nivel.nombre == 'PRIVATE CLIENT ADVISOR':
+
+            a = Agente.objects.filter(user_id=id).values('user','photo','id','estructura__nombre','user__pais__nombre','user__email','tipo_agente__nombre','meta_personal','meta_requerida','correo_capital','photo','user__first_name','user__last_name','user__dni','user__direccion','equipo__nombre','user__username')
+        
+        else:
+
+            a = Agente.objects.filter(user_id=id).values('user','photo','id','estructura__nombre','user__pais__nombre','user__email','tipo_agente__nombre','meta_personal','meta_requerida','correo_capital','photo','user__first_name','user__last_name','user__dni','user__direccion','equipo__nombre','user__username','nivel__nombre')
+    
+        fmt = '%d %b %Y'
+
+        for j in range(len(a)):
+
+            if Agente.objects.get(id=a[j]['id']).fecha_ingreso:
+                a[j]['fecha_ingreso'] = Agente.objects.get(id=a[j]['id']).fecha_ingreso.strftime(fmt)
+            if Agente.objects.get(id=a[j]['id']).user.nacimiento:
+                a[j]['fecha_nacimiento'] = Agente.objects.get(id=a[j]['id']).user.nacimiento
+            if TelefonoUser.objects.filter(user_id=a[j]['user']):
+                a[j]['telefono']=TelefonoUser.objects.filter(user_id=a[j]['user']).values('numero').order_by('-id')[0]['numero']
+
+        a= simplejson.dumps(ValuesQuerySetToDict(a))
+        return HttpResponse(a, content_type="application/json")
+
+
+class Eliminarcita(JSONWebTokenAuthMixin, View):
+
+    
+    ## Agrega telefonos
+    def get(self, request,id):
+
+
+        Citas.objects.get(id=id).delete()
+
+        return HttpResponse(simplejson.dumps('OK'), content_type="application/json")
+
+class Guardanoti(JSONWebTokenAuthMixin, View):
+
+    
+    ## Agrega telefonos
+    def post(self,request):
+
+
+        data = json.loads(request.body)
+
+        print data
+
+        codigo = data['codigo']
+
+        notification = codigo['notification']
+
+        payload = notification['payload']
+
+        rawpayload = payload['rawPayload']
+
+        custom = rawpayload['custom']
+
+        a = custom['a']
+
+        codigo =a['codigo']
+
+        print 'codigo.....',codigo
+
+
+        a = Agente.objects.get(user_id=request.user.id)
+        a.codigo = codigo
+        a.save()
+
+        #{u'codigo': {u'action': {}, u'notification': {u'displayType': 1, u'shown': True, u'isAppInFocus': True, u'payload': {u'sound': u'default', u'body': u'2121', u'subtitle': u'212', u'title': u'2221', u'actionButtons': [], u'rawPayload': {u'aps': {u'sound': u'default', u'alert': {u'body': u'2121', u'subtitle': u'212', u'title': u'2221'}}, u'custom': {u'i': u'13ed0193-859d-44ed-ac2f-05db3f3931f0'}}, u'notificationID': u'13ed0193-859d-44ed-ac2f-05db3f3931f0'}}}}
+
+        return HttpResponse(simplejson.dumps('OK'), content_type="application/json")
+
+
+
+class Agentesequipo(JSONWebTokenAuthMixin, View):
+
+    
+    ## Agrega telefonos
+    def get(self, request):
+
+        print 'agentes equipos......'
+
+
+        tipo_agente = Agente.objects.get(user_id=request.user.id).tipo_agente.nombre
+
+        agente_id = Agente.objects.get(user_id=request.user.id).id
+
+        print 'agente_id',agente_id
+
+        country_manager= Agentejerarquia.objects.filter(country_manager_id=agente_id).exclude(country_manager_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(country_manager)):
+
+            country_manager[c]['id']= country_manager[c]['agente_id']
+
+            country_manager[c]['user__first_name']= country_manager[c]['agente__nombre']
+
+        country_manager = ValuesQuerySetToDict(country_manager)
+        
+        bussiness_partner = Agentejerarquia.objects.filter(bussiness_partner_id=agente_id).exclude(bussiness_partner_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        print 'bussiness_partner',bussiness_partner
+
+        for c in range(len(bussiness_partner)):
+
+            bussiness_partner[c]['id']= bussiness_partner[c]['agente_id']
+
+            bussiness_partner[c]['user__first_name']= bussiness_partner[c]['agente__nombre']
+
+        bussiness_partner = ValuesQuerySetToDict(bussiness_partner)
+
+        relation_ship_director = Agentejerarquia.objects.filter(relation_ship_director_id=agente_id).exclude(relation_ship_director_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(relation_ship_director)):
+
+            relation_ship_director[c]['id']= relation_ship_director[c]['agente_id']
+
+            relation_ship_director[c]['user__first_name']= relation_ship_director[c]['agente__nombre']
+
+        relation_ship_director = ValuesQuerySetToDict(relation_ship_director)
+
+        relation_management = Agentejerarquia.objects.filter(relation_management_id=agente_id).exclude(relation_management_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(relation_management)):
+
+            relation_management[c]['id']= relation_management[c]['agente_id']
+
+            relation_management[c]['user__first_name']= relation_management[c]['agente__nombre']
+
+        relation_management = ValuesQuerySetToDict(relation_management)
+
+        relation_management_senior= Agentejerarquia.objects.filter(relation_management_senior_id=agente_id).exclude(relation_management_senior_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(relation_management_senior)):
+
+            relation_management_senior[c]['id']= relation_management_senior[c]['agente_id']
+
+            relation_management_senior[c]['user__first_name']= relation_management_senior[c]['agente__nombre']
+
+        relation_management_senior = ValuesQuerySetToDict(relation_management_senior)
+
+        private_client = Agentejerarquia.objects.filter(private_client_senior_id=agente_id).exclude(private_client_senior_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(private_client)):
+
+            private_client[c]['id']= private_client[c]['agente_id']
+
+            private_client[c]['user__first_name']= private_client[c]['agente__nombre']
+
+        private_client = ValuesQuerySetToDict(private_client)
+
+        private_client_senior = Agentejerarquia.objects.filter(private_client_senior_id=agente_id).exclude(private_client_senior_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(private_client_senior)):
+
+            private_client_senior[c]['id']= private_client_senior[c]['agente_id']
+
+            private_client_senior[c]['user__first_name']= private_client_senior[c]['agente__nombre']
+
+        private_client_senior = ValuesQuerySetToDict(private_client_senior)
+
+
+
+        equipo_gerente = Agente.objects.get(user_id=request.user.id).equipo.id
+
+        agen =  country_manager +bussiness_partner+relation_ship_director+relation_management+relation_management_senior+private_client+private_client_senior
+
+        print 'agentes encontrados...',agen
+
+        #agen = Agente.objects.filter(equipo_id=equipo_gerente).values('user','photo','id','estructura__nombre','user__email','tipo_agente__nombre','meta_personal','meta_requerida','correo_capital','photo','user__first_name','user__last_name','user__dni','user__direccion','equipo__nombre','user__username','pais__nombre','telefono_1','nivel__nombre')
+
+        r= simplejson.dumps(agen)
+
+        return HttpResponse(r, content_type="application/json")
+
+
+
+
+class Sacareportegerente(JSONWebTokenAuthMixin, View):
+
+    ## Agrega telefonos
+    def post(self, request):
+
+
+        #Sacando reporte....
+
+        agente_id = Agente.objects.get(user_id=request.user.id).id
+
+        _agentes = []
+
+        country_manager= Agentejerarquia.objects.filter(country_manager_id=agente_id).exclude(country_manager_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(country_manager)):
+
+            _agentes.append(country_manager[c]['agente_id'])
+
+        bussiness_partner = Agentejerarquia.objects.filter(bussiness_partner_id=agente_id).exclude(bussiness_partner_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(bussiness_partner)):
+
+            _agentes.append(bussiness_partner[c]['agente_id'])
+
+        relation_ship_director = Agentejerarquia.objects.filter(relation_ship_director_id=agente_id).exclude(relation_ship_director_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(relation_ship_director)):
+
+            _agentes.append(relation_ship_director[c]['agente_id'])
+
+        relation_management= Agentejerarquia.objects.filter(relation_management_id=agente_id).exclude(relation_management_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(relation_management)):
+
+            _agentes.append(relation_management[c]['agente_id'])
+
+        relation_management_senior= Agentejerarquia.objects.filter(relation_management_senior_id=agente_id).exclude(relation_management_senior_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(relation_management_senior)):
+
+            _agentes.append(relation_management_senior[c]['agente_id'])
+
+        private_client = Agentejerarquia.objects.filter(private_client_senior_id=agente_id).exclude(private_client_senior_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(private_client)):
+
+            _agentes.append(private_client[c]['agente_id'])
+
+        private_client_senior = Agentejerarquia.objects.filter(private_client_senior_id=agente_id).exclude(private_client_senior_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(private_client_senior)):
+
+            _agentes.append(private_client[c]['agente_id'])
+
+
+        ########
+
+        data = json.loads(request.body)
+
+        #{u'fin': u'2018-03-18T05:00:00.000Z', u'inicio': u'2018-03-01T05:00:00.000Z'}
+
+        grupo = User.objects.get(pk=request.user.id).groups.get()
+
+        equipo = Agente.objects.get(user_id=request.user.id).equipo.nombre
+
+        my_filter={}
+
+        # if str(grupo)!='ADMIN':
+
+        #     my_filter['equipo__nombre'] = equipo
+
+
+        print 'grupo',grupo
+
+        # fecha_cita__gte = '1/1/1000'
+
+        # fecha_cita__lte = '1/12/4000'
+
+        # fecha_cita__gte=datetime.strptime(str(fecha_cita__gte), '%d/%m/%Y')
+
+        # fecha_cita__lte=datetime.strptime(str(fecha_cita__lte), '%d/%m/%Y')
+
+        for r in json.loads(request.body):
+
+            if r=='agente__nombre':
+
+                agente = data['agente__nombre']
+
+                my_filter['nombre'] = agente
+
+            if r=='inicio':
+
+                fecha_cita__gte = data['inicio']
+
+                print fecha_cita__gte
+
+                #fecha_cita__gte=datetime.strptime(str(fecha_cita__gte), '%d/%m/%Y')
+
+            if r=='fin':
+
+                fecha_cita__lte = data['fin']
+
+                print fecha_cita__lte
+
+                #fecha_cita__lte=datetime.strptime(str(fecha_cita__lte), '%d/%m/%Y')
+
+
+        print 'agentes',_agentes
+
+        my_filter['id__in'] = _agentes
+
+                
+
+
+        c  = Agente.objects.filter(**my_filter).values('id','nombre','apellidos','equipo','pais__nombre').order_by('nombre')
+
+        response = HttpResponse(content_type='text/csv')
+
+        response['Content-Disposition'] = 'attachment; filename="Citas.csv'
+
+        writer = csv.writer(response)
+
+        #writer.writerow(['Agente','# Nuevos Prospectos','# Citas Equipo ','# Seguimiento','# POS';'# Cierre','#Entrega'])
+
+        _nombres = []
+        _nuevos = []
+        _seguimiento = []
+        _pos =[]
+        _cierre =[]
+        _entrega = []
+        _citaequipo = []
+        _vida=[]
+        _salud=[]
+        _investiments=[]
+        _ramosgenerales=[]
+        _bp = []
+        _rd = []
+        _rm = []
+        _pais = []
+        _efectividad=[]
+        _citas_esperadas = []
+        _porcentareal = []
+        _produccion=[]
+        _produccion_inforce=[]
+        _totalcierres=[]
+
+        with open('/var/www/file.csv', 'wb') as result:
+
+            writer = csv.writer(result, delimiter=",")
+
+            writer.writerow( ('','','','','','Tipos de Citas','','','Total Casos','','','','','','','','','','Produccion Inforce','','','') )
+
+            writer.writerow( ('Agente','Pais','BP','RD','RM','Nuevos Prospectos','Seguimiento','POS','Total Propuestas','Vida','Salud','Inversiones','Total Cierres','Vida','Salud','Inversiones','Total Produccion Sometida','Total Produccion Inforce','Vida','Salud','Investiments','Efectividad','%Termometro Nuevos Prospectos','Entrega' ) )
+
+            #writer.writerow( ('_nombres', 'pais','bp','rd','rm','nuevos','seguimiento','pos','nuevos','vida','salud','investiments','totalcierres','vidacerrados','saludcerrados','inversioncerrados','produccion','produccion_inforce','vidainforce','saludinforce','inversioninforce','efectividad','porcentareal','entrega') )
+
+
+            for i in range(len(c)):
+
+                c[i]['nombre'] = c[i]['nombre'].encode('ascii','ignore')
+
+                c[i]['nombre'] = c[i]['nombre'].encode('ascii','replace')
+
+                c[i]['apellidos'] = c[i]['apellidos'].encode('ascii','ignore')
+
+                c[i]['apellidos'] = c[i]['apellidos'].encode('ascii','replace')
+
+                #Sacando jerarquias 
+
+                age = Agentejerarquia.objects.get(agente_id=c[i]['id'])
+
+                bp = age.bussiness_partner.nombre + ' '+age.bussiness_partner.apellidos
+
+                bp = bp.encode('ascii','ignore')
+
+                bp = bp.encode('ascii','replace')
+
+                rd = age.relation_ship_director.nombre+ ' '+age.relation_ship_director.apellidos
+
+                rd = rd.encode('ascii','ignore')
+
+                rd = rd.encode('ascii','replace')
+
+                rm = age.relation_management.nombre+' '+age.relation_management.apellidos
+
+                rm = rm.encode('ascii','ignore')
+
+                rm = rm.encode('ascii','replace')
+
+                if rm=='Sin Asignar': rm='NA'
+                if rd=='Sin Asignar': rd='NA'
+                if bp=='Sin Asignar': bp='NA'
+
+                # if !rd: rd = age.relation_ship_senior.director.nombre+ ' '+age.relation_ship_director_senior.apellido
+
+                # if !rm: rm = age.relation_management_senior.director.nombre+ ' '+age.relation_management_senior.apellido
+
+                _bp.append(bp)
+
+                _rm.append(rm)
+
+                _rd.append(rd)
+
+                # Pais
+
+                pais = c[i]['pais__nombre']
+
+                pais = pais.encode('ascii','ignore')
+
+                pais = pais.encode('ascii','replace')
+
+                # Saca reporte gerente
+
+                x = Citas.objects.filter(fecha_cita__lte=fecha_cita__lte,fecha_cita__gte=fecha_cita__gte,agente_id=c[i]['id'],tipo_seguimiento__nombre='Cierre')
+
+                totalcierres = x.count()
+
+
+                totalcitas = Citas.objects.filter(fecha_cita__lte=fecha_cita__lte,fecha_cita__gte=fecha_cita__gte,agente_id=c[i]['id'],tipo_seguimiento__nombre='Nuevo').count()
+
+                if totalcitas==0:
+
+                    efectividad = 0
+
+                else:
+
+                    efectividad = totalcierres*100/totalcitas
+
+                _efectividad.append(efectividad)
+
+                _pais.append(pais)
+
+                # Reporte 
+
+                cli = Cliente.objects.filter(agente_id=c[i]['id'])
+
+                con=0
+
+                for o in cli:
+
+                    if Citas.objects.filter(fecha_cita__lte=fecha_cita__lte,fecha_cita__gte=fecha_cita__gte,cliente_id=o.id,tipo_cita__nombre='Nuevo Prospecto de Cliente').count()>0:
+
+                        con = con+1
+
+                ncitasreal = con
+
+                totalcitasesperado = 260
+
+                porcentareal = float(ncitasreal*100)/float(totalcitasesperado)
+
+                _porcentareal.append(porcentareal)
+
+                _nombres = c[i]['nombre']+' ' +c[i]['apellidos']
+                
+                #Produccion mensual
+
+                produccion = Citas.objects.filter(fecha_cita__lte=fecha_cita__lte,fecha_cita__gte=fecha_cita__gte,agente_id=c[i]['id'],tipo_seguimiento__nombre='Cierre').aggregate(produccion=Sum('prima_target'))['produccion']
+
+                #produccion_inforce = Citas.objects.filter(fecha_cita__lte=fecha_cita__lte,fecha_cita__gte=fecha_cita__gte,agente_id=c[i]['id'],tipo_seguimiento__nombre='Cierre',inforce=1).aggregate(produccion_inforce=Sum('prima_target'))['produccion_inforce']
+                
+                nuevos = Citas.objects.filter(fecha_cita__lte=fecha_cita__lte,fecha_cita__gte=fecha_cita__gte,agente_id=c[i]['id'],tipo_cita__nombre='Nuevo Prospecto de Cliente').count()
+        
+                seguimiento = Citas.objects.filter(fecha_cita__lte=fecha_cita__lte,fecha_cita__gte=fecha_cita__gte,agente_id=c[i]['id'],tipo_seguimiento__nombre='Seguimiento').count()
+
+                pos = Citas.objects.filter(fecha_cita__lte=fecha_cita__lte,fecha_cita__gte=fecha_cita__gte,agente_id=c[i]['id'],tipo_seguimiento__nombre='POS').count()
+
+                cierre = Citas.objects.filter(fecha_cita__lte=fecha_cita__lte,fecha_cita__gte=fecha_cita__gte,agente_id=c[i]['id'],tipo_seguimiento__nombre='Cierre').count()
+
+                entrega = Citas.objects.filter(fecha_cita__lte=fecha_cita__lte,fecha_cita__gte=fecha_cita__gte,agente_id=c[i]['id'],tipo_seguimiento__nombre='Entrega').count()
+
+
+                vida = PropuestaCliente.objects.filter(fecha__lte=fecha_cita__lte,fecha__gte=fecha_cita__gte,agente_id=c[i]['id'],ramo_compania_producto__ramo__nombre='Vida').count()
+
+                salud = PropuestaCliente.objects.filter(fecha__lte=fecha_cita__lte,fecha__gte=fecha_cita__gte,agente_id=c[i]['id'],ramo_compania_producto__ramo__nombre='Salud').count()
+
+                investiments = PropuestaCliente.objects.filter(fecha__lte=fecha_cita__lte,fecha__gte=fecha_cita__gte,agente_id=c[i]['id'],ramo_compania_producto__ramo__nombre='Investiments').count()
+
+                totalpropuestas =vida+salud+investiments
+
+                ramosgenerales = Citas.objects.filter(fecha_cita__lte=fecha_cita__lte,fecha_cita__gte=fecha_cita__gte,agente_id=c[i]['id'],propuesta_cliente__ramo_compania_producto__ramo__nombre='Ramos Generales').count()
+
+                vidacerrados =  Citas.objects.filter(fecha_cita__lte=fecha_cita__lte,fecha_cita__gte=fecha_cita__gte,agente_id=c[i]['id'],tipo_seguimiento__nombre='Cierre',propuesta_cliente__ramo_compania_producto__ramo__nombre='Vida').count()
+
+                saludcerrados = Citas.objects.filter(fecha_cita__lte=fecha_cita__lte,fecha_cita__gte=fecha_cita__gte,agente_id=c[i]['id'],tipo_seguimiento__nombre='Cierre',propuesta_cliente__ramo_compania_producto__ramo__nombre='Salud').count()
+
+                inversioncerrados = Citas.objects.filter(fecha_cita__lte=fecha_cita__lte,fecha_cita__gte=fecha_cita__gte,agente_id=c[i]['id'],tipo_seguimiento__nombre='Cierre',propuesta_cliente__ramo_compania_producto__ramo__nombre='Investiments').count()
+       
+                totalcierres = vidacerrados + saludcerrados + inversioncerrados
+
+                vidainforce =  Citas.objects.filter(fecha_cita__lte=fecha_cita__lte,fecha_cita__gte=fecha_cita__gte,agente_id=c[i]['id'],tipo_seguimiento__nombre='Cierre',propuesta_cliente__ramo_compania_producto__ramo__nombre='Vida',inforce=1).aggregate(produccion=Sum('prima_target'))['produccion']
+
+                saludinforce = Citas.objects.filter(fecha_cita__lte=fecha_cita__lte,fecha_cita__gte=fecha_cita__gte,agente_id=c[i]['id'],tipo_seguimiento__nombre='Cierre',propuesta_cliente__ramo_compania_producto__ramo__nombre='Salud',inforce=1).aggregate(produccion=Sum('prima_target'))['produccion']
+
+                inversioninforce = Citas.objects.filter(fecha_cita__lte=fecha_cita__lte,fecha_cita__gte=fecha_cita__gte,agente_id=c[i]['id'],tipo_seguimiento__nombre='Cierre',propuesta_cliente__ramo_compania_producto__ramo__nombre='Investiments',inforce=1).aggregate(produccion=Sum('prima_target'))['produccion']
+
+
+                print vidainforce,saludinforce,inversioninforce
+
+                if vidainforce == None: vidainforce=0
+                if saludinforce == None: saludinforce=0
+                if inversioninforce == None: inversioninforce=0
+
+                produccion_inforce = vidainforce+saludinforce+inversioninforce
+
+
+                print produccion_inforce
+                #writer.writerow( ('Agente','Pais','BP','RD','RM','Nuevos Prospectos','Seguimiento','POS','Total Propuestas','Vida','Salud','Inversiones','Total Cierres','Vida','Salud','Inversiones','Total Produccion Sometida','Total Produccion Inforce','Vida','Salud','Investiments','Efectividad','%Termometro Nuevos Prospectos','Entrega' ) )
+
+
+                writer.writerow( (_nombres, pais,bp,rd,rm,nuevos,seguimiento,pos,totalpropuestas,vida,salud,investiments,totalcierres,vidacerrados,saludcerrados,inversioncerrados,produccion,produccion_inforce,vidainforce,saludinforce,inversioninforce,efectividad,porcentareal,entrega) )
+
+
+        #df = pandas.DataFrame(data={"0 Agente": _nombres,"1 Pais":_pais,"2 BP":_bp,"2.1 RD":_rd,"2.2 RM":_rm,"3 #Total Casos Cerados ":_totalcierres,"3.1 # Nuevos Prospectos":_nuevos,"3.2 # Seguimiento":_seguimiento,"3.3 POS":_pos,"3.4 Total Propuestas":_nuevos,"8.1 Total Produccion Sometida":_produccion,"8.2 Total Produccion Inforce":_produccion_inforce,"9.1 Vida":_vida,"9.2 Salud":_salud,"9.3 Inversiones":_investiments,"9.4 Efectividad":_efectividad,"9.5 %Termometro Nuevos Prospectos":_porcentareal,"9.6 Entrega":_entrega})
+    
+        #df.to_csv("/var/www/file.csv", sep=';',index=True)
+
+
+            #writer.writerow([c[i]['nombre'] +' '+c[i]['apellidos'] ,nuevos,citaequipo,seguimiento,pos,cierre,entrega])
+
+        
+
+
+
+        return response
+
+
+
+
+
+
+
+class Userfono(JSONWebTokenAuthMixin, View):
+
+    ## Agrega telefonos
+    def post(self, request):
+
+        data = json.loads(request.body)
+        telefono=data['id']
+        numero=data['numero']
+        TelefonoUser(user_id=id,numero=numero).save()
+
+        return HttpResponse(simplejson.dumps('OK'), content_type="application/json")
+
+    ## Lista los telefonos
+    def get(self,request):
+
+        t=TelefonoUser.objects.filter('numero').values('numero')
+        t= simplejson.dumps(ValuesQuerySetToDict(t))
+    
+        return HttpResponse(t, content_type="application/json")
+
+    ## Elimina telefono
+    def delete(self,request):
+
+        TelefonoUser.objects.get(id=telefono).delete()
+
+        return HttpResponse(simplejson.dumps('OK'), content_type="application/json")
+
+    #Actualiza telefono
+    def put(self,request):
+
+        t=TelefonoUser.objects.get(id=telefono)
+        t.numero= numero
+        t.save()
+
+        return HttpResponse(simplejson.dumps('OK'), content_type="application/json")
+
+
+class CreaPariente(JSONWebTokenAuthMixin, View):
+
+    #Crea nuevo cliente
+    def post(self, request):
+
+        data = json.loads(request.body)
+
+        print 'data[relacion]',data['relacion']
+
+        #Calculando edad
+
+        yeardays = 365
+
+        act_year = datetime.datetime.today().year
+
+        fecha_nacimiento = str(data['fecha_nacimiento'])[0:10]
+
+        data['fecha_nacimiento'] = datetime.datetime.strptime(fecha_nacimiento,'%Y-%m-%d')
+
+        diff = (datetime.datetime.today() - data['fecha_nacimiento']).days
+        if act_year / 4 == 0 and act_year != 100 or act_year / 400 == 0:
+            yeardays += 1
+        else:
+            yeardays = 365
+            years = str(int(diff/yeardays))
+        
+
+        #fin de edad
+
+        if int(data['relacion']) == 1:
+
+            cliente = Cliente.objects.get(id=data['cliente'])
+            cliente.conyuge=data['nombre']
+            cliente.fecha_nacimiento_conyuge = data['fecha_nacimiento']
+            cliente.edad_conyuge=years
+            
+
+            cliente.save()
+
+        ParientesCliente(edad=years,nombre=data['nombre'],fecha_nacimiento=data['fecha_nacimiento'],cliente_id=data['cliente'],relacion_id=data['relacion']).save()
+
+
+        return HttpResponse(simplejson.dumps('cliente_id'), content_type="application/json")
+
+
+
+
+
+class Creacliente(JSONWebTokenAuthMixin, View):
+
+    #Crea nuevo cliente
+    def post(self, request):
+
+        id =request.user.id
+
+        id_agente = Agente.objects.get(user_id=id).id
+
+        #id_equipo = Agente.objects.get(id=request.user.id).equipo.id
+
+        data = json.loads(request.body)
+
+        for i in data:
+
+            print i
+
+        fecha_inicio= None
+        estado_civil= None
+        numero_hijos= None
+        first_name= None
+        last_name= None
+        email= None
+        pais= None
+        nacimiento= None
+        dni= None
+        direccion= None
+        id_cliente= None
+        telefono=None
+        for i in data:
+
+            print i
+
+            if i=='fecha_inicio' : fecha_inicio = data['fecha_inicio']
+            if i=='estado_civil' : estado_civil = data['estado_civil']
+            if i=='numero_hijos' : numero_hijos = data['numero_hijos']
+            if i=='first_name' : first_name = data['first_name']
+            if i=='last_name' : last_name = data['last_name']
+            if i=='email' : email = data['email']
+            if i=='pais' : pais = data['pais']
+            if i=='nacimiento' : nacimiento = data['nacimiento']
+            if i=='dni' : dni = data['dni']
+            if i=='direccion' : direccion = data['direccion']
+            if i=='telefono' : telefono = data['telefono']
+
+
+
+        # print nacimiento
+        
+        # nacimiento = datetime.datetime.strptime(nacimiento, '%Y-%m-%dT%H:%M:%S.%fZ')
+
+        #2017-09-06T05:00:00.000Z
+        # nacimiento = nacimiento.strftime('%Y-%m-%d')
+
+
+
+
+        ## Telefono del usuario
+
+        #TelefonoUser(user_id=u_id,numero=telefono).save()
+
+        c=Cliente(agente_id=id_agente,nombre=first_name,fecha_inicio=fecha_inicio,estado_civil=estado_civil,numero_hijos=numero_hijos,apellido=last_name,direccion=direccion,telefono=telefono).save()
+        
+        cliente_id = Cliente.objects.all().values('id').order_by('-id')[0]['id']
+        
+        Agentecliente(agente_id=id_agente,cliente_id=cliente_id).save()
+
+        return HttpResponse(simplejson.dumps(cliente_id), content_type="application/json")
+
+    #Actualiza cliente
+    def put(self, request):
+
+        id =request.user.id
+        data = json.loads(request.body)
+
+        print 'put..',data
+
+        # parientes': [{u'edad': 0, u'nombre': u'1212', u'id': 294, u'relacion__nombre': u'Hijo', 
+        # u'fecha_nacimiento': None}, {u'edad': 0, u'nombre': u'212', u'id': 295, u'relacion__nombre': 
+        # u'Hijo', u'fecha_nacimiento': None}], u'fecha_nacimiento': u'2018
+
+        fecha_nacimiento = '1900-01-01'
+        conyuge= None
+        nombre = None
+        apellido = None
+        email = None
+        telefono = None
+        direccion = None
+        estado_civil_id = None
+
+        cliente = data['id']
+        c=Cliente.objects.get(id=cliente)
+
+        for i in data:
+
+            if i=='fecha_nacimiento':
+
+                if data['fecha_nacimiento']!=None:
+                    
+                    fecha_nacimiento = str(data['fecha_nacimiento'])[0:10]
+                    c.fecha_nacimiento=fecha_nacimiento
+
+            if i=='fecha_nacimiento_conyuge':
+
+                if data['fecha_nacimiento_conyuge']!=None:
+                    
+                    fecha_nacimiento_conyuge = str(data['fecha_nacimiento_conyuge'])[0:10]
+                    c.fecha_nacimiento_conyuge=fecha_nacimiento_conyuge
+
+
+            if i=='conyuge':
+                conyuge = data['conyuge']
+                c.conyuge=conyuge
+            if i=='nombre':
+                nombre = data['nombre']
+                c.nombre=nombre
+
+            if i=='edad_conyuge':
+                edad_conyuge = data['edad_conyuge']
+                c.edad_conyuge=edad_conyuge
+            if i=='apellido':
+                apellido = data['apellido']
+                c.apellido=apellido
+            if i=='email':
+                email = data['email']
+                c.email=email
+            if i=='telefono':
+                telefono = data['telefono']
+                c.telefono=telefono
+            if i=='direccion':
+                direccion = data['direccion']
+                c.direccion=direccion
+            if i=='estado_civil':
+                estado_civil_id=data['estado_civil']
+                c.estado_civil_id=estado_civil_id
+
+            if i=='parientes':
+
+                for p in data['parientes']:
+
+                    yeardays = 365
+
+                    act_year = datetime.datetime.today().year
+
+                    h = ParientesCliente.objects.get(id=p['id'])
+                    
+                    h.nombre=p['nombre']
+
+                    # fecha_nacimiento = str(p['fecha_nacimiento'])[0:10]
+
+                    # data['fecha_nacimiento'] = datetime.datetime.strptime(fecha_nacimiento,'%Y-%m-%d')
+
+                    # diff = (datetime.datetime.today() - data['fecha_nacimiento']).days
+                    # if act_year / 4 == 0 and act_year != 100 or act_year / 400 == 0:
+                    #     yeardays += 1
+                    # else:
+                    #     yeardays = 365
+                    #     years = str(int(diff/yeardays))
+
+                    # print 'edad..',years
+
+                    # h.edad=years
+
+                    # if p['edad']:
+
+                    h.edad=p['edad']
+
+                    # if p=='fecha_nacimiento':
+
+                    h.save()
+
+
+        c.save()
+
+        
+
+
+        
+        
+        
+        
+
+
+        
+        
+        
+        
+        
+
+        # au =AuthUser.objects.get(id=c.user_id)
+
+
+
+
+
+        # for i in data:
+
+        #   if i=='estado_civil' :c.estado_civil_id=data['estado_civil']
+        #   if i=='numero_hijos' : c.numero_hijos=data['numero_hijos']
+        #   if i=='first_name' : au.first_name=data['nombre']
+        #   if i=='last_name' : au.last_name=data['apellido']
+        #   if i=='email' : au.email=data['email']
+        #   if i=='pais' : au.pais=data['pais']
+        #   if i=='nacimiento' : au.nacimiento=data['user__nacimiento']
+        #   if i=='telefono' : telefono=data['telefono']['numero']
+        #   if i=='dni' : au.dni=data['user__dni']
+        #   if i=='user__direccion' : au.direccion=data['user__direccion']
+
+
+        # c.save()
+        # au.save()
+
+
+
+
+        return HttpResponse(simplejson.dumps('OK'), content_type="application/json")
+
+        
+    
+    #Informacion del cliente
+    def get(self,request):
+
+        data = json.loads(request.body)
+        cliente=data['cliente']
+
+        c =Cliente.objects.filter(id=cliente).values('fecha_inicio','estado_civil','numero_hijos','user__first_name','user__last_name','user__email','user__pais','user__nacimiento','user__dni','user__direccion','conyuge')
+        c= simplejson.dumps(ValuesQuerySetToDict(c))
+        return HttpResponse(c, content_type="application/json")
+
+
+class TodosClientes(JSONWebTokenAuthMixin, View):
+
+    #Crea nuevo propuesta
+    def get(self,request):
+
+        print 'username',User.objects.get(id=request.user.id).username
+
+        id_agente = Agente.objects.get(user_id=request.user.id).id
+
+        perfil = Agente.objects.get(user_id=request.user.id).nivel.nombre
+
+        equipo = Agente.objects.get(user_id=request.user.id).equipo.nombre
+
+        
+
+
+        if perfil=='IFA':
+
+            c =Cliente.objects.filter(agente_id=id_agente).values('id','estado_civil','numero_hijos','dni','direccion','conyuge','nombre','apellido','telefono','direccion','email').order_by('-id')
+        
+            for cli in range(len(c)):
+
+                prospecto = PropuestaCliente.objects.filter(cliente_id=c[cli]['id']).values('cliente__nombre','ramo_compania_producto__ramo__nombre')
+
+                c[cli]['propuesta']= ValuesQuerySetToDict(prospecto)
+
+        if perfil=='ADMINISTRADOR':
+
+            c =Cliente.objects.all().values('id','estado_civil','numero_hijos','dni','conyuge','nombre','apellido','telefono','direccion','email').order_by('-id')
+        
+        if perfil=='GERENTE':
+
+            if Agente.objects.get(user_id=request.user.id).subgrupo:
+
+                subgrupo = Agente.objects.get(user_id=request.user.id).subgrupo.nombre
+
+                c =Cliente.objects.filter(agente__subgrupo__nombre=subgrupo).values('id','estado_civil','numero_hijos','dni','conyuge','nombre','apellido','telefono','direccion','email').order_by('-id')
+        
+            else:
+
+                c =Cliente.objects.filter(agente_id=id_agente).values('id','estado_civil','numero_hijos','dni','conyuge','nombre','apellido','telefono','direccion','email').order_by('-id')
+        
+
+        if perfil=='GERENTE GENERAL':
+
+            c =Cliente.objects.filter(agente_id=id_agente).values('id','estado_civil','numero_hijos','dni','conyuge','nombre','apellido','telefono','direccion','email').order_by('-id')
+        
+        
+
+        if perfil=='DIRECTOR':
+
+            c =Cliente.objects.filter(agente_id=id_agente).values('id','estado_civil','numero_hijos','dni','conyuge','nombre','apellido','telefono','direccion','email').order_by('-id')
+        
+
+            # if Agente.objects.get(user_id=request.user.id).grupo:
+
+            #     c =Cliente.objects.filter(agente__grupo__nombre=grupo).values('id','estado_civil','numero_hijos','dni','conyuge','nombre','apellido','telefono','direccion','email')
+            
+            # else:
+
+            #     c =Cliente.objects.filter(agente__equipo__nombre=equipo).values('id','estado_civil','numero_hijos','dni','conyuge','nombre','apellido','telefono','direccion','email')
+            
+        
+
+        if perfil=='PRIVATE CLIENT ADVISOR':
+
+            c =Cliente.objects.filter(agente_id=id_agente).values('id','estado_civil','numero_hijos','dni','conyuge','nombre','apellido','telefono','direccion','email').order_by('-id')
+        
+        for i in range(len(c)):
+
+            if Citas.objects.filter(inforce=1,cliente_id=c[i]['id']).count()>0:
+
+                c[i]['cierre'] = True
+
+            else:
+
+                c[i]['cierre'] = False
+
+
+
+        #c =Cliente.objects.all().values('id','estado_civil','numero_hijos','user__first_name','user__last_name','user__email','user__pais','user__dni','user__direccion')
+        c= simplejson.dumps(ValuesQuerySetToDict(c))
+        return HttpResponse(c, content_type="application/json")
+
+class Resumen(JSONWebTokenAuthMixin, View):
+
+    #Crea nuevo propuesta
+    def post(self,request):
+
+        id_agente =Agente.objects.get(user=request.user.id).id
+
+        data = json.loads(request.body)
+
+        s= data['semana']
+
+        se = Semana.objects.filter(numero=s)
+
+        nuevasvisitas=Citas.objects.filter(fecha_cita__gte=se.fecha_inicio,fecha_cita__lte=se.fecha_fin,agente_id=id_agente,tipo_cita__nombre='Nuevo Prospecto de Cliente').count()
+
+        seguimiento=Citas.objects.filter(fecha_cita__gte=se.fecha_inicio,fecha_cita__lte=se.fecha_fin,agente_id=id_agente,tipo_cita__nombre='Seguimiento').count()
+
+        pos=Citas.objects.filter(fecha_cita__gte=se.fecha_inicio,fecha_cita__lte=se.fecha_fin,agente_id=id_agente,tipo_cita__nombre='POS').count()
+
+        
+        mes =data['mes']
+
+        nvm = Citas.objects.filter(fecha_cita__month__gte=mes,agente_id=id_agente,tipo_cita__nombre='Nuevo Prospecto de Cliente').count()
+
+        segm = Citas.objects.filter(fecha_cita__month__gte=mes,agente_id=id_agente,tipo_cita__nombre='Seguimiento').count()
+
+        posm = Citas.objects.filter(fecha_cita__month__gte=mes,agente_id=id_agente,tipo_cita__nombre='POS').count()
+
+        produccionmensual=[]
+
+        montomensual = []
+
+        for mes in range(12):
+
+            produccionmensual.push(Citas.objects.filter(fecha_cita__month__gte=mes,tipo_seguimiento__nombre='Cierre').count())
+            
+            m = Citas.objects.filter(fecha_cita__month__gte=mes,tipo_seguimiento__nombre='Cierre')
+
+            mm =0
+
+            for x in m:
+            
+                mm=mm+Citas.objects.get(fecha_cita__month__gte=mes,tipo_seguimiento__nombre='Cierre').prima_target
+            
+            montomensual.push(mm)
+            
+        data ={'produccionmensual':produccionmensual,'nvm':nvm,'segm':segm,'posm':posm,'nuevasvisitas':nuevasvisitas,'seguimiento':seguimiento,'pos':pos}
+
+        c= simplejson.dumps(data)
+
+        return HttpResponse(c, content_type="application/json")
+
+
+class Produccionxcia(JSONWebTokenAuthMixin, View):
+
+    #Crea nuevo propuesta
+    def get(self,request):
+
+        c =Agente.objects.get(user_id=request.user.id)
+
+        c =Citas.objects.filter(agente_id=c.id,tipo_seguimiento__nombre='Cierre').values('propuesta_cliente__ramo_compania_producto__compania__nombre').annotate(citas=Count('propuesta_cliente__ramo_compania_producto__compania__nombre'))
+
+        c= simplejson.dumps(data)
+
+        return HttpResponse(c, content_type="application/json")
+
+
+class Calculapropuestasporramo(JSONWebTokenAuthMixin, View):
+
+    #Crea nuevo propuesta
+    def get(self,request):
+
+        id_agente = Agente.objects.get(user_id=request.user.id).id
+        
+        r=PropuestaCliente.objects.filter(agente_id=id_agente).values('ramo_compania_producto__ramo__nombre').annotate(total=Count('ramo_compania_producto__ramo__nombre'))
+        r= simplejson.dumps(ValuesQuerySetToDict(r))
+        return HttpResponse(r, content_type="application/json")
+
+
+class Calculaproduccionporramoequipo(JSONWebTokenAuthMixin, View):
+
+    #Crea nuevo propuesta
+    def get(self,request):
+
+
+        agente_id = Agente.objects.get(user_id=request.user.id).id
+
+        _agentes = []
+
+        country_manager= Agentejerarquia.objects.filter(country_manager_id=agente_id).exclude(country_manager_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(country_manager)):
+
+            _agentes.append(country_manager[c]['agente_id'])
+
+        bussiness_partner = Agentejerarquia.objects.filter(bussiness_partner_id=agente_id).exclude(bussiness_partner_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(bussiness_partner)):
+
+            _agentes.append(bussiness_partner[c]['agente_id'])
+
+        relation_ship_director = Agentejerarquia.objects.filter(relation_ship_director_id=agente_id).exclude(relation_ship_director_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(relation_ship_director)):
+
+            _agentes.append(relation_ship_director[c]['agente_id'])
+
+        relation_management= Agentejerarquia.objects.filter(relation_management_id=agente_id).exclude(relation_management_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(relation_management)):
+
+            _agentes.append(relation_management[c]['agente_id'])
+
+        relation_management_senior= Agentejerarquia.objects.filter(relation_management_senior_id=agente_id).exclude(relation_management_senior_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(relation_management_senior)):
+
+            _agentes.append(relation_management_senior[c]['agente_id'])
+
+        private_client = Agentejerarquia.objects.filter(private_client_senior_id=agente_id).exclude(private_client_senior_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(private_client)):
+
+            _agentes.append(private_client[c]['agente_id'])
+
+        private_client_senior = Agentejerarquia.objects.filter(private_client_senior_id=agente_id).exclude(private_client_senior_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(private_client_senior)):
+
+            _agentes.append(private_client[c]['agente_id'])
+
+        id_agente = Agente.objects.get(user_id=request.user.id).id
+
+        r = Ramo.objects.all().values('id','nombre')
+
+        for i in range(len(r)):
+
+            pt=Citas.objects.filter(agente_id__in=_agentes,tipo_seguimiento__nombre='Cierre',propuesta_cliente__ramo_compania_producto__ramo__nombre=r[i]['nombre']).values('propuesta_cliente__ramo_compania_producto__ramo__nombre').annotate(total= Sum('prima_target'))
+
+            r[i]['prima_target'] = ValuesQuerySetToDict(pt)
+
+        r= simplejson.dumps(ValuesQuerySetToDict(r))
+
+        return HttpResponse(r, content_type="application/json")
+
+
+
+class Calculaproduccionporramo(JSONWebTokenAuthMixin, View):
+
+    #Crea nuevo propuesta
+    def get(self,request):
+
+        id_agente = Agente.objects.get(user_id=request.user.id).id
+
+        r = Ramo.objects.all().values('id','nombre')
+
+        for i in range(len(r)):
+
+            pt=Citas.objects.filter(agente_id=id_agente,tipo_seguimiento__nombre='Cierre',propuesta_cliente__ramo_compania_producto__ramo__nombre=r[i]['nombre']).values('propuesta_cliente__ramo_compania_producto__ramo__nombre').annotate(total= Sum('prima_target'))
+
+            r[i]['prima_target'] = ValuesQuerySetToDict(pt)
+
+        r= simplejson.dumps(ValuesQuerySetToDict(r))
+
+        return HttpResponse(r, content_type="application/json")
+
+
+
+class Produccionxramo(JSONWebTokenAuthMixin, View):
+
+    #Crea nuevo propuesta
+    def get(self,request):
+
+        c =Agente.objects.get(user_id=request.user.id)
+
+        c =Citas.objects.filter(agente_id=c.id,tipo_seguimiento__nombre='Cierre').values('propuesta_cliente__ramo_compania_producto__ramo__nombre').annotate(citas=Count('propuesta_cliente__ramo_compania_producto__ramo__nombre'))
+
+        c= simplejson.dumps(data)
+
+        return HttpResponse(c, content_type="application/json")
+
+
+
+
+class Month(Func):
+    function = 'EXTRACT'
+    template = '%(function)s(MONTH from %(expressions)s)'
+    output_field = models.IntegerField()    
+
+class MiGestion(JSONWebTokenAuthMixin, View):
+
+    #Crea nuevo propuesta
+    def get(self,request):
+
+
+        c =Agente.objects.get(user_id=request.user.id)
+
+        avance = c.meta_personal
+
+        x = Citas.objects.filter(agente_id=c.id,tipo_seguimiento__nombre='Cierre')
+
+        totalcierres = x.count()
+
+        totalcitas = Citas.objects.filter(agente_id=c.id,tipo_seguimiento__nombre='Nuevo').count()
+
+        if totalcitas==0:
+
+            efectividad = 0
+
+        else:
+
+            efectividad = totalcierres*100/totalcitas
+
+        ytd=0
+
+        for n in x:
+
+            if n.prima_target:
+                ytd =ytd+float(n.prima_target)
+
+        
+
+        #Produccion por compania
+
+        cias = Citas.objects.filter(agente_id=c.id,tipo_seguimiento__nombre='Cierre').values('propuesta_cliente__ramo_compania_producto__compania__nombre').annotate(contador=Sum('prima_target'),casos=Count('propuesta_cliente__ramo_compania_producto__compania'))
+        
+        for i in range(len(cias)):
+
+            produccion_cias = Citas.objects.filter(agente_id=c.id,tipo_seguimiento__nombre='Cierre',propuesta_cliente__ramo_compania_producto__compania__nombre=cias[i]['propuesta_cliente__ramo_compania_producto__compania__nombre'],inforce=1).values('propuesta_cliente__ramo_compania_producto__compania').annotate(produccion=Sum('prima_target'))
+            
+            print 'produccion_cias',produccion_cias.count()
+
+            if produccion_cias.count()>0:
+
+                cias[i]['inforce'] = produccion_cias[0]['produccion']
+
+            else:
+
+                cias[i]['inforce']=0
+
+        #Produccion por ramos
+
+        ramos = Citas.objects.filter(agente_id=c.id,tipo_seguimiento__nombre='Cierre').values('propuesta_cliente__ramo_compania_producto__ramo__nombre').annotate(contador=Sum('prima_target'),casos=Count('propuesta_cliente__ramo_compania_producto__ramo'))
+        
+        for i in range(len(ramos)):
+
+            produccion_ramos = Citas.objects.filter(agente_id=c.id,tipo_seguimiento__nombre='Cierre',propuesta_cliente__ramo_compania_producto__ramo__nombre=ramos[i]['propuesta_cliente__ramo_compania_producto__ramo__nombre'],inforce=1).values('propuesta_cliente__ramo_compania_producto__ramo__nombre').annotate(produccion=Sum('prima_target'))
+            
+            print 'produccion_ramos',produccion_ramos
+
+            if len(produccion_ramos)>0:
+
+                ramos[i]['inforce'] = produccion_ramos[0]['produccion']
+
+            else:
+
+                ramos[i]['inforce']=0
+
+            #ramos[i]['contador'] = "{:,}".format(ramos[i]['contador'])
+
+        ramos = ValuesQuerySetToDict(ramos)
+
+        cias = ValuesQuerySetToDict(cias)
+
+        nuevosnegocios = Citas.objects.filter(agente_id=c.id,tipo_seguimiento__nombre='Cierre').count()
+
+        nuevosprospectos = Citas.objects.filter(agente_id=c.id,tipo_seguimiento__nombre='Nuevo').count()
+
+        #Produccion por compania
+
+        produccionmensual = Citas.objects.filter(agente_id=c.id,tipo_seguimiento__nombre='Cierre').values('semana__mes__nombre').annotate(produccion_cierre=Sum('prima_target'),casos=Count('semana__mes__nombre'))
+
+        for i in range(len(produccionmensual)):
+
+            produccion_inforce = Citas.objects.filter(semana__mes__nombre=produccionmensual[i]['semana__mes__nombre'],agente_id=c.id,tipo_seguimiento__nombre='Cierre',inforce=1).values('semana__mes__nombre').annotate(produccion=Sum('prima_target'))
+            
+            print 'produccion_inforce...',len(produccion_inforce)
+
+            if len(produccion_inforce)>0:
+
+                produccionmensual[i]['inforce'] = produccion_inforce[0]['produccion']
+
+            else:
+
+                produccionmensual[i]['inforce'] = 0
+
+
+        produccionmensual = ValuesQuerySetToDict(produccionmensual)
+
+        ytdavance=ytd
+
+        ytd="{:,}".format(ytd)
+
+
+
+        data={'nuevosnegocios':nuevosnegocios,'nuevosprospectos':nuevosprospectos,'ramos':ramos,'cias':cias,'produccionmensual':produccionmensual,'efectividad':efectividad,'ytdavance':ytdavance,'ytd':ytd,'meta_personal':c.meta_personal,'meta_requerida':c.meta_requerida,'avance':avance}
+        data= simplejson.dumps(data)
+        return HttpResponse(data, content_type="application/json")
+
+class MiGestionequipo(JSONWebTokenAuthMixin, View):
+
+    #Crea nuevo propuesta
+    def get(self,request):
+
+
+        #.....
+
+        agente_id = Agente.objects.get(user_id=request.user.id).id
+
+        _agentes = []
+
+        country_manager= Agentejerarquia.objects.filter(country_manager_id=agente_id).exclude(country_manager_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(country_manager)):
+
+            _agentes.append(country_manager[c]['agente_id'])
+
+        bussiness_partner = Agentejerarquia.objects.filter(bussiness_partner_id=agente_id).exclude(bussiness_partner_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(bussiness_partner)):
+
+            _agentes.append(bussiness_partner[c]['agente_id'])
+
+        relation_ship_director = Agentejerarquia.objects.filter(relation_ship_director_id=agente_id).exclude(relation_ship_director_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(relation_ship_director)):
+
+            _agentes.append(relation_ship_director[c]['agente_id'])
+
+        relation_management= Agentejerarquia.objects.filter(relation_management_id=agente_id).exclude(relation_management_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(relation_management)):
+
+            _agentes.append(relation_management[c]['agente_id'])
+
+        relation_management_senior= Agentejerarquia.objects.filter(relation_management_senior_id=agente_id).exclude(relation_management_senior_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(relation_management_senior)):
+
+            _agentes.append(relation_management_senior[c]['agente_id'])
+
+        private_client = Agentejerarquia.objects.filter(private_client_senior_id=agente_id).exclude(private_client_senior_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(private_client)):
+
+            _agentes.append(private_client[c]['agente_id'])
+
+        private_client_senior = Agentejerarquia.objects.filter(private_client_senior_id=agente_id).exclude(private_client_senior_id=142).values('id','agente_id','agente__nombre','agente__apellidos')
+
+        for c in range(len(private_client_senior)):
+
+            _agentes.append(private_client[c]['agente_id'])
+
+
+
+
+        c =Agente.objects.get(user_id=request.user.id)
+
+        avance = c.meta_personal
+
+        x = Citas.objects.filter(agente_id__in=_agentes,tipo_seguimiento__nombre='Cierre')
+
+        totalcierres = x.count()
+
+        totalcitas = Citas.objects.filter(agente_id__in=_agentes,tipo_seguimiento__nombre='Nuevo').count()
+
+        if totalcitas==0:
+
+            efectividad = 0
+
+        else:
+
+            efectividad = totalcierres*100/totalcitas
+
+        ytd=0
+
+        for n in x:
+
+            if n.prima_target:
+                ytd =ytd+float(n.prima_target)
+
+        
+
+        #Produccion por compania
+
+        cias = Citas.objects.filter(agente_id__in=_agentes,tipo_seguimiento__nombre='Cierre').values('propuesta_cliente__ramo_compania_producto__compania__nombre').annotate(contador=Sum('prima_target'),casos=Count('propuesta_cliente__ramo_compania_producto__compania'))
+        
+        for i in range(len(cias)):
+
+            produccion_cias = Citas.objects.filter(agente_id__in=_agentes,tipo_seguimiento__nombre='Cierre',propuesta_cliente__ramo_compania_producto__compania__nombre=cias[i]['propuesta_cliente__ramo_compania_producto__compania__nombre'],inforce=1).values('propuesta_cliente__ramo_compania_producto__compania').annotate(produccion=Sum('prima_target'))
+            
+            print 'produccion_cias',produccion_cias.count()
+
+            if produccion_cias.count()>0:
+
+                cias[i]['inforce'] = produccion_cias[0]['produccion']
+
+            else:
+
+                cias[i]['inforce']=0
+
+
+        ramos = Citas.objects.filter(agente_id__in=_agentes,tipo_seguimiento__nombre='Cierre').values('propuesta_cliente__ramo_compania_producto__ramo__nombre').annotate(contador=Sum('prima_target'),casos=Count('propuesta_cliente__ramo_compania_producto__ramo'))
+        
+        for i in range(len(ramos)):
+
+            produccion_ramos = Citas.objects.filter(agente_id__in=_agentes,tipo_seguimiento__nombre='Cierre',propuesta_cliente__ramo_compania_producto__ramo__nombre=ramos[i]['propuesta_cliente__ramo_compania_producto__ramo__nombre'],inforce=1).values('propuesta_cliente__ramo_compania_producto__ramo__nombre').annotate(produccion=Sum('prima_target'))
+            
+            if produccion_ramos.count()>0:
+
+                ramos[i]['inforce'] = produccion_ramos[0]['produccion']
+
+            else:
+
+                ramos[i]['inforce']=0
+
+            #ramos[i]['contador'] = "{:,}".format(ramos[i]['contador'])
+
+        ramos = ValuesQuerySetToDict(ramos)
+
+        cias = ValuesQuerySetToDict(cias)
+
+        nuevosnegocios = Citas.objects.filter(agente_id__in=_agentes,tipo_seguimiento__nombre='Cierre').count()
+
+        nuevosprospectos = Citas.objects.filter(agente_id__in=_agentes,tipo_seguimiento__nombre='Nuevo').count()
+
+        #Produccion por compania
+
+        produccionmensual = Citas.objects.filter(agente_id__in=_agentes,tipo_seguimiento__nombre='Cierre').values('semana__mes__nombre').annotate(produccion_cierre=Sum('prima_target'),casos=Count('semana__mes__nombre'))
+
+        for i in range(len(produccionmensual)):
+
+            produccion_inforce = Citas.objects.filter(semana__mes__nombre=produccionmensual[i]['semana__mes__nombre'],agente_id=c.id,tipo_seguimiento__nombre='Cierre',inforce=1).values('semana__mes__nombre').annotate(produccion=Sum('prima_target'))
+            
+            print 'produccion_inforce...',len(produccion_inforce)
+
+            if len(produccion_inforce)>0:
+
+                produccionmensual[i]['inforce'] = produccion_inforce[0]['produccion']
+
+            else:
+
+                produccionmensual[i]['inforce'] = 0
+
+
+
+        produccionmensual = ValuesQuerySetToDict(produccionmensual)
+
+        ytdavance=ytd
+
+        ytd="{:,}".format(ytd)
+
+
+
+
+
+        data={'nuevosnegocios':nuevosnegocios,'nuevosprospectos':nuevosprospectos,'ramos':ramos,'cias':cias,'produccionmensual':produccionmensual,'efectividad':efectividad,'ytdavance':ytdavance,'ytd':ytd,'meta_personal':c.meta_personal,'meta_requerida':c.meta_requerida,'avance':avance}
+        data= simplejson.dumps(data)
+        return HttpResponse(data, content_type="application/json")
+
+class Metricas(JSONWebTokenAuthMixin, View):
+
+    #Crea nuevo propuesta
+    def get(self,request,mes,dia,mes1,dia1):
+
+        #Setiembre
+
+        con =0
+
+        if len(mes)==1:
+            mes='0'+mes
+        if len(dia)==1:
+            dia='0'+dia
+        if len(dia1)==1:
+            dia1='0'+dia1
+        if len(mes1)==1:
+            mes1='0'+mes1
+
+        inicio= '2018-'+str(mes)+'-'+str(dia)
+
+        fin = '2018-'+str(mes1)+'-'+str(dia1)
+
+        inicio = datetime.datetime.strptime(inicio, '%Y-%m-%d')
+
+        fin = datetime.datetime.strptime(fin, '%Y-%m-%d')+timedelta(days=1)
+
+        agente = Agente.objects.get(user_id=request.user.id).id
+
+        print 'inicio,fin',inicio,fin
+
+        c=Citas.objects.filter(agente_id=agente,fecha_cita__gte=inicio,fecha_cita__lte=fin).count() 
+
+        #n =Citas.objects.filter(agente_id=agente,fecha_cita__gte=inicio,fecha_cita__lte=fin,tipo_cita__nombre='Nuevo Prospecto de Cliente').count()
+
+        cli = Cliente.objects.filter(agente_id=agente)
+
+        for i in cli:
+
+            if Citas.objects.filter(cliente_id=i.id,fecha_cita__gte=inicio,fecha_cita__lte=fin,tipo_cita__nombre='Nuevo Prospecto de Cliente').count()>0:
+
+                con = con+1
+
+
+        n = con
+
+
+        p=0
+
+        x={'c':c,'n':n,'p':0,'t':int(c)+int(n)+int(p)}
+
+        print x
+
+        c= simplejson.dumps(x)
+
+
+
+        return HttpResponse(c, content_type="application/json")
+
+class Creacita(JSONWebTokenAuthMixin, View):
+
+    #Crea nuevo propuesta
+    def post(self, request):
+
+        data = json.loads(request.body)
+
+        print data
+
+
+
+        cliente=None
+        tipo_cita=None
+        propuesta_cliente=None
+        tipo_seguimiento=None
+        fecha_cita=None
+        observacion=''
+        fecha_solicitud=None
+        prima_target=''
+        modalidad=None
+        prima_anual=''
+        fecha_poliza=None
+        seguimiento=None
+        cierre=None
+        poliza=None
+        agente=Agente.objects.get(user=request.user.id).id
+
+
+
+        for i in data:
+
+            if i=='cliente': cliente=data['cliente']
+            if i=='tipo_cita': tipo_cita=data['tipo_cita']
+            if i=='tipo_seguimiento':tipo_seguimiento=data['tipo_seguimiento']
+            if i=='propuesta': propuesta_cliente=data['propuesta']['id']
+
+            for f in data['form']:
+
+                if f=='observacion':observacion=data['form']['observacion']
+                if f=='prima_target':prima_target=data['form']['prima_target']
+                if f=='prima_anual':prima_anual=data['form']['prima_anual']
+                if f=='fecha_cita': fecha_cita=data['form']['fecha_cita']
+                if f=='fecha_solicitud': fecha_solicitud=data['form']['fecha_solicitud']
+                if f=='modalidad': modalidad=data['form']['modalidad']['id']
+                
+        
+            if i=='seguimiento': seguimiento=data['seguimiento']
+            if i=='cierre': cierre=data['cierre']
+            if i=='poliza': poliza=data['poliza']
+
+        # if fecha_cita==None:
+        fecha_creacion=datetime.datetime.now()
+
+
+        print 'fecha_cita',fecha_cita
+
+
+        #Cita... {u'seguimiento': 1, u'propuesta': {u'agente': None, u'ramo_compania_producto__compania__nombre': u'NWL', u'id': 8, u'ramo_compania_producto__producto__nombre': u'Index Select', u'cliente__user__first_name': u'Andy', u'ramo_compania_producto__ramo__nombre': u'Vida Int', u'cliente': 13}, u'cliente': u'13', u'form': {u'observacion': u'3232'}}
+
+        if seguimiento==1: tipo_seguimiento=1
+        if cierre==1:tipo_seguimiento=2
+        if poliza==1:tipo_seguimiento=3
+
+        tipo_cita= 2 ##Seguimiento
+
+
+        sem= traesemana(fecha_cita)
+
+        Citas(semana_id=sem,fecha_creacion=fecha_creacion,agente_id=agente,tipo_seguimiento_id=tipo_seguimiento,cliente_id=cliente,tipo_cita_id=tipo_cita,propuesta_cliente_id=propuesta_cliente,observacion=observacion,fecha_cita=fecha_cita,fecha_solicitud=fecha_solicitud,prima_target=prima_target,modalidad_id=modalidad,prima_anual=prima_anual,fecha_poliza=fecha_poliza).save()
+
+
+        c= simplejson.dumps('cliente')
+        return HttpResponse(c, content_type="application/json")
+
+
+class Creapos(JSONWebTokenAuthMixin, View):
+
+    #Crea nuevo propuesta
+    def post(self, request):
+
+        data = json.loads(request.body)
+
+        print data
+
+
+
+        cliente=None
+        tipo_cita=None
+        propuesta_cliente=None
+        tipo_seguimiento=None
+        fecha_cita=None
+        observacion=''
+        fecha_solicitud=None
+        prima_target=''
+        modalidad=None
+        prima_anual=''
+        fecha_poliza=None
+        seguimiento=None
+        cierre=None
+        poliza=None
+        agente=Agente.objects.get(user=request.user.id).id
+
+        
+        for i in data:
+
+            if i=='observacion': observacion=data['observacion']
+            if i=='fecha_cita': fecha_cita=data['fecha_cita']
+            if i=='pos':producto=data['pos']
+            if i=='tipo_cita': tipo_cita=data['tipo_cita']
+            if i=='cliente': cliente=data['cliente']
+
+        tipo_cita= 3 # POS
+
+        fecha_creacion=datetime.datetime.now()
+
+        sem= traesemana(fecha_cita)
+
+        Citas(semana_id=sem,tipo_seguimiento_id=4,fecha_creacion=fecha_creacion,agente_id=agente,cliente_id=cliente,tipo_cita_id=tipo_cita,propuesta_cliente_id=producto,observacion=observacion,fecha_cita=fecha_cita).save()
+
+
+        c= simplejson.dumps('cliente')
+        return HttpResponse(c, content_type="application/json")
+
+
+class Creapropuesta(JSONWebTokenAuthMixin, View):
+
+    #Crea nuevo propuesta
+    def post(self, request):
+
+        data = json.loads(request.body)
+
+        print data
+
+
+
+        agente=Agente.objects.get(user=request.user.id).id
+
+        cliente=None
+        cia= None
+        observacion=''
+        compania= None
+        producto=None
+        rcp=None
+        interes=''
+        fecha_poliza=None
+        fecha_solicitud=None
+        prima_target=None
+
+        for i in data:
+
+            if i=='cliente':cliente=data['cliente']
+            if i=='observacion':observacion=data['observacion']
+            if i=='cia':cia=data['cia']
+            if i=='producto':producto=data['producto']
+            if i=='ramo':ramo=data['ramo']['id']
+            if i=='interes':interes=data['interes']['name']
+            if i=='modalidad':modalidad=data['modalidad']['id']
+            if i=='fecha_poliza':fecha_poliza=data['fecha_poliza']
+            if i=='fecha_solicitud':fecha_solicitud=data['fecha_solicitud']
+            if i=='prima_anual':prima_anual=data['prima_anual']
+            if i=='prima_target':prima_target=data['prima_target']
+
+
+
+
+        rcp=RamoCompaniaProducto.objects.get(compania_id=cia,ramo_id=ramo,producto_id=producto).id
+
+        PropuestaCliente(cliente_id=cliente,fecha=datetime.datetime.now(),agente_id=agente,observacion=observacion,ramo_compania_producto_id=rcp,interes=interes).save()
+        
+        id_propuesta=PropuestaCliente.objects.all().values('id').order_by('-id')[0]['id']
+
+        fecha_inicio = Cliente.objects.get(id=cliente).fecha_inicio
+
+
+        if fecha_inicio==None:
+
+            fecha_inicio = datetime.datetime.now()
+
+        sem= traesemana(fecha_inicio)
+
+        Citas(semana_id=sem,tipo_seguimiento_id=5,fecha_creacion=datetime.datetime.now(),agente_id=agente,cliente_id=cliente,tipo_cita_id=1,propuesta_cliente_id=id_propuesta,observacion=observacion,fecha_cita=fecha_inicio).save()
+
+        if data['isChecked']==True:
+
+            Citas(fecha_poliza=fecha_poliza,fecha_solicitud=fecha_solicitud,prima_target=prima_target,modalidad_id=modalidad,prima_anual=prima_anual,semana_id=sem,tipo_seguimiento_id=2,fecha_creacion=datetime.datetime.now(),agente_id=agente,cliente_id=cliente,tipo_cita_id=2,propuesta_cliente_id=id_propuesta,observacion=observacion,fecha_cita=fecha_inicio).save()
+
+            id_cita=Citas.objects.all().values('id').order_by('-id')[0]['id']
+
+            ci = Citas.objects.get(id=id_cita)
+            ci.inforce=1
+            ci.save()
+
+
+
+
+        c= simplejson.dumps(cliente)
+
+        return HttpResponse(c, content_type="application/json")
+
+
+    #Actualizapropuesta
+    def put(self, request):
+
+        data = json.loads(request.body)
+        propuesta = data['propuesta']
+
+        p=PropuestaCliente.objects.get(id=propuesta)
+
+        for i in data:
+            if i=='cliente':p.cliente=data['cliente']
+            if i=='agente':p.agente=data['agente']
+            if i=='observacion':p.observacion=data['observacion']
+            if i=='fecha':p.fecha=data['fecha']
+            if i=='detalle':p.detalle=data['detalle']
+            if i=='ramo_compania_producto':p.ramo_compania_producto=data['ramo_compania_producto']
+
+        p.save()
+        return HttpResponse(simplejson.dumps('OK'), content_type="application/json")
+
+class Listaramos(JSONWebTokenAuthMixin, View):
+
+    #Lista ramo cia producto
+    def get(self, request):
+
+        r=Ramo.objects.all().values('id','nombre')
+        r= simplejson.dumps(ValuesQuerySetToDict(r))
+        return HttpResponse(r, content_type="application/json")
+
+class ListaModalidad(JSONWebTokenAuthMixin, View):
+
+    #Lista ramo cia producto
+    def get(self, request):
+
+        r=Modalidad.objects.all().values('id','nombre')
+        r= simplejson.dumps(ValuesQuerySetToDict(r))
+        return HttpResponse(r, content_type="application/json")
+
+
+class Losarchivos(JSONWebTokenAuthMixin, View):
+
+    #Lista ramo cia producto
+    def get(self, request):
+
+        r=Archivo.objects.all().values('id','nombre','ruta')
+        r= simplejson.dumps(ValuesQuerySetToDict(r))
+        return HttpResponse(r, content_type="application/json")
+
+
+class IconosLista(JSONWebTokenAuthMixin, View):
+
+    #Lista ramo cia producto
+    def get(self, request):
+
+        r=Iconos.objects.all().values('id','nombre','icono').order_by('id')
+        r= simplejson.dumps(ValuesQuerySetToDict(r))
+        return HttpResponse(r, content_type="application/json")
+
+
+class Semanasall(JSONWebTokenAuthMixin, View):
+
+    #Lista ramo cia producto
+    def get(self, request):
+
+        r=Semanas.objects.all().values('id','numero').order_by('-id')
+
+        fmt = '%d %b'
+
+        for j in range(len(r)):
+
+            r[j]['fecha_inicio'] = Semanas.objects.get(id=r[j]['id']).fecha_inicio.strftime(fmt)
+            r[j]['fecha_fin'] = Semanas.objects.get(id=r[j]['id']).fecha_fin.strftime(fmt)
+        r= simplejson.dumps(ValuesQuerySetToDict(r))
+        return HttpResponse(r, content_type="application/json")
+
+
+
+
+class Calculacitas(JSONWebTokenAuthMixin, View):
+
+    #Lista ramo cia producto
+    def get(self, request,mes):
+
+        age=Agente.objects.get(user=request.user.id).id
+
+        print 'mes.............',mes
+
+        if int(mes)==1:
+
+            sem = [1,2,3,4,5]
+
+        if int(mes)==2:
+
+            sem = [6,7,8,9]
+
+        if int(mes)==3:
+
+            sem = [10,11,12,13]
+
+        if int(mes)==4:
+
+            sem = [14,15,16,17,18]
+
+        if int(mes)==5:
+
+            sem = [19,20,21,22,23]
+
+        if int(mes)==6:
+
+            sem = [19,20,21,22,23]
+
+        if int(mes)==7:
+
+            sem = [19,20,21,22,23]
+
+        if int(mes)==8:
+
+            sem = [19,20,21,22,23]
+
+        if int(mes)==9:
+
+            sem = [19,20,21,22,23]
+
+        if int(mes)==10:
+
+            sem = [19,20,21,22,23]
+
+        if int(mes)==11:
+
+            sem = [19,20,21,22,23]
+
+        if int(mes)==12:
+
+            sem = [19,20,21,22,23]
+
+
+
+        nn = Citas.objects.filter(agente_id=age,semana__numero__in=sem,tipo_cita__nombre='Nuevo Prospecto de Cliente').values('cliente').annotate(total=Count('cliente')).count()
+
+        ncitasmes = nn
+
+        nseguimientomes = Citas.objects.filter(agente_id=age,tipo_cita__nombre='Seguimiento de Prospectos',semana__numero__in=sem).count()
+
+        nposmes = Citas.objects.filter(agente_id=age,tipo_cita__nombre='POS',semana__numero__in=sem).count()
+
+
+
+        r={'ncitasmes':ncitasmes,'nseguimientomes':nseguimientomes,'nposmes':nposmes}
+
+        r= simplejson.dumps(r)
+        return HttpResponse(r, content_type="application/json")
+
+
+
+class Calculomes(JSONWebTokenAuthMixin, View):
+
+    #Lista ramo cia producto
+    def get(self, request):
+
+    
+        agente=Agente.objects.get(user=request.user.id).id
+
+        cli = Cliente.objects.filter(agente_id=agente)
+
+
+        # for c in cli:
+
+        #     if Citas.objects.filter(tipo_cita__nombre='Nuevo Prospecto Cliente').count()
+
+        # Por mes
+
+        ncitasmes = (Citas.objects.filter(agente_id=agente,tipo_seguimiento__nombre='Nuevo')
+                      .annotate(m=Month('fecha_cita'))
+                      .values('m')
+                      .annotate(total=Count('cliente'))
+                      .annotate(produccion=Sum('prima_target'))
+                      .order_by())
+
+        ncitasmes= simplejson.dumps(ValuesQuerySetToDict(ncitasmes))
+
+        nseguimientomes = (Citas.objects.filter(agente_id=agente,tipo_cita__nombre='Seguimiento de Prospectos')
+                      .annotate(m=Month('fecha_cita'))
+                      .values('m')
+                      .annotate(total=Count('cliente'))
+                      .annotate(produccion=Sum('prima_target'))
+                      .order_by())
+
+        nseguimientomes= simplejson.dumps(ValuesQuerySetToDict(nseguimientomes))
+
+        nposmes = (Citas.objects.filter(agente_id=agente,tipo_cita__nombre='POS')
+                      .annotate(m=Month('fecha_cita'))
+                      .values('m')
+                      .annotate(total=Count('cliente'))
+                      .annotate(produccion=Sum('prima_target'))
+                      .order_by())
+
+        nposmes= simplejson.dumps(ValuesQuerySetToDict(nposmes))
+
+
+        r={'ncitasmes':ncitasmes,'nseguimientomes':nseguimientomes,'nposmes':nposmes}
+
+        r= simplejson.dumps(r)
+        return HttpResponse(r, content_type="application/json")
+
+
+class Calculoanio(JSONWebTokenAuthMixin, View):
+
+    #Lista ramo cia producto
+    def get(self,request,anio):
+
+    
+        agente=Agente.objects.get(user=request.user.id).id
+
+        # Por anio
+
+        ncitas2018nuevo = Citas.objects.filter(agente_id=agente,fecha_cita__gte='2018-01-01',fecha_cita__lte='2018-12-31',tipo_seguimiento__nombre='Nuevo').values('cliente').annotate(total=Count('cliente')).count()
+
+        ncitas2018seguimiento = Citas.objects.filter(agente_id=agente,fecha_cita__gte='2018-01-01',fecha_cita__lte='2018-12-31',tipo_cita__nombre='Seguimiento de Prospectos').count()
+
+        ncitas2018pos = Citas.objects.filter(agente_id=agente,fecha_cita__gte='2018-01-01',fecha_cita__lte='2018-12-31',tipo_cita__nombre='POS').count()
+
+
+
+        r={'ncitas2018nuevo':ncitas2018nuevo,'ncitas2018seguimiento':ncitas2018seguimiento,'ncitas2018pos':ncitas2018pos}
+
+        r= simplejson.dumps(r)
+
+        return HttpResponse(r, content_type="application/json")
+
+
+class Calculo(JSONWebTokenAuthMixin, View):
+
+    #Lista ramo cia producto
+    def get(self, request,semana):
+
+        s=Semanas.objects.get(numero=semana)
+
+
+        agente=Agente.objects.get(user=request.user.id).id
+
+        #Intervalos de fechas
+
+        nuevascitas = Citas.objects.filter(agente_id=agente,tipo_seguimiento__nombre='Nuevo',fecha_cita__gte=s.fecha_inicio,fecha_cita__lte=s.fecha_fin).count()
+
+        nseguimiento = Citas.objects.filter(agente_id=agente,tipo_cita__nombre='Seguimiento de Prospectos',fecha_cita__gte=s.fecha_inicio,fecha_cita__lte=s.fecha_fin).count()
+
+        npos = Citas.objects.filter(agente_id=agente,tipo_cita__nombre='POS',fecha_cita__gte=s.fecha_inicio,fecha_cita__lte=s.fecha_fin).count()
+
+
+
+
+        r={'ncitas':nuevascitas,'nseguimiento':nseguimiento,'npos':npos}
+
+        r= simplejson.dumps(r)
+        return HttpResponse(r, content_type="application/json")
+
+
+class Detallepropuesta(JSONWebTokenAuthMixin, View):
+
+    #Lista ramo cia producto
+    def get(self, request,id):
+
+        r=PropuestaCliente.objects.filter(id=id).values('observacion','id','agente','cliente','ramo_compania_producto__ramo__nombre','ramo_compania_producto__compania__nombre','ramo_compania_producto__producto__nombre','cliente__nombre','cliente__id')
+        
+        fmt = '%Y-%m-%d'
+
+        for j in range(len(r)):
+
+            if PropuestaCliente.objects.get(id=r[j]['id']).fecha:
+
+                r[j]['fecha'] = PropuestaCliente.objects.get(id=r[j]['id']).fecha.strftime(fmt)
+
+        r= simplejson.dumps(ValuesQuerySetToDict(r))
+
+        return HttpResponse(r, content_type="application/json")
+
+
+
+
+
+class Listacia(JSONWebTokenAuthMixin, View):
+
+    #Lista ramo cia producto
+    def get(self, request,ramo):
+
+        r=RamoCompaniaProducto.objects.filter(ramo_id=ramo).values('compania','compania__nombre').annotate(c=Max('compania'))
+        r= simplejson.dumps(ValuesQuerySetToDict(r))
+        return HttpResponse(r, content_type="application/json")
+
+
+class Listaproducto(JSONWebTokenAuthMixin, View):
+
+    #Lista ramo cia producto
+    def get(self, request,ramo,cia):
+
+        r=RamoCompaniaProducto.objects.filter(ramo_id=ramo,compania_id=cia).values('id','producto','producto__nombre')
+        r= simplejson.dumps(ValuesQuerySetToDict(r))
+        return HttpResponse(r, content_type="application/json")
+
+
+class Listapropuestas(JSONWebTokenAuthMixin, View):
+
+    #Lista ramo cia producto
+    def get(self, request,cliente):
+
+        r=PropuestaCliente.objects.filter(cliente_id=cliente).values('id','cliente','agente','ramo_compania_producto__ramo__nombre','ramo_compania_producto__compania__nombre','ramo_compania_producto__producto__nombre')
+        
+        for j in range(len(r)):
+
+            if Citas.objects.filter(propuesta_cliente_id=r[j]['id'],tipo_seguimiento__nombre='Cierre'):
+
+                r[j]['cierre']=1
+
+            else:
+
+                r[j]['cierre']=0
+
+
+        r= simplejson.dumps(ValuesQuerySetToDict(r))
+        return HttpResponse(r, content_type="application/json")
