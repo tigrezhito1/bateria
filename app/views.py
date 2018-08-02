@@ -54,6 +54,13 @@ import unicodecsv as csv
 import pandas as pd
 
 
+
+
+
+def login2(request):
+	
+	return render(request, 'login.html',{})
+
 class Uploadphoto(JSONWebTokenAuthMixin, View):
 
 	#Retorna datos del agente

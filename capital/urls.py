@@ -16,7 +16,7 @@ urlpatterns = [
     url(r'^api-token-auth/', 'jwt_auth.views.obtain_jwt_token'),
     url(r'^pos/', admin_site.urls),
     url(r'api-token-refresh/', refresh_jwt_token),
-
+    url(r'^login/', 'views.login2'),
     url(r'^agente/$', Agenterest.as_view()),
     url(r'^userfono/$', Userfono.as_view()),
     url(r'^creacliente/$', Creacliente.as_view()),

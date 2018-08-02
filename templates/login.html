@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+     {% include "head.html" %}
+  <body>
+    <div class="page login-page">
+      <div class="container d-flex align-items-center">
+        <div class="form-holder has-shadow">
+          <div class="row">
+            <!-- Logo & Information Panel-->
+            <div class="col-lg-6">
+              <div class="info d-flex align-items-center">
+                <div class="content">
+                  <div class="logo">
+                    <center><img src="http://www.hairrecovery.com.ar/assets/logo.png"></center>
+                  </div>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit.</p>
+                </div>
+              </div>
+            </div>
+            <!-- Form Panel    -->
+            <div class="col-lg-6 bg-white">
+              <div class="form d-flex align-items-center">
+                <div class="content">
+
+
+     
+
+
+                    <form id="login-form" method="post" action="/ingresar/">
+
+
+
+                      {% csrf_token %}
+
+                      <div class="form-group">
+                      <input id="login-username" required type="text" name='username' required="" class="input-material">
+                      <label for="login-username" class="label-material">Usuario</label>
+                    </div>
+
+                    <div class="form-group">
+                      <input id="login-password" type="password" name='password' required="" class="input-material">
+                      <label for="login-password" class="label-material">Contraseña</label>
+                    </div><button id="login" type='submit' class="btn btn-primary">Iniciar sesión</button>
+
+
+                    {{error}}
+
+                    </form>
+
+
+
+
+                  <a href="#" class="forgot-pass">olvidaste tu contraseña?</a><br><small>No tienes una cuenta? </small><a href="register.html" class="signup">Regístrate</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="copyrights text-center">
+        <p> Hair Recovery<a href="https://bootstrapious.com/admin-templates" class="external">Diseñado por </a></p>
+        <!-- Please do not remove the backlink to us unless you support further theme's development at https://bootstrapious.com/donate. It is part of the license conditions. Thank you for understanding :)-->
+      </div>
+    </div>
+    <!-- Javascript files-->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <script src="/static/js/tether.min.js"></script>
+    <script src="/static/js/bootstrap.min.js"></script>
+    <script src="/static/js/jquery.cookie.js"> </script>
+    <script src="/static/js/jquery.validate.min.js"></script>
+    <script src="/static/js/front.js"></script>
+    <!-- Google Analytics: change UA-XXXXX-X to be your site's ID.-->
+    <!---->
+    <script>
+      (function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=
+      function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;
+      e=o.createElement(i);r=o.getElementsByTagName(i)[0];
+      e.src='//www.google-analytics.com/analytics.js';
+      r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));
+      ga('create','UA-XXXXX-X');ga('send','pageview');
+    </script>
+  </body>
+</html>
